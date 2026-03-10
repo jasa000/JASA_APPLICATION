@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Share } from 'lucide-react';
+import { Download, Share, EllipsisVertical, PlusSquare } from 'lucide-react';
 import { SidebarMenuButton, SidebarGroup, SidebarMenu, SidebarMenuItem } from './ui/sidebar';
 import {
   AlertDialog,
@@ -36,7 +36,9 @@ const PwaInstallButton = () => {
     setIsIos(/iphone|ipad|ipod/.test(userAgent));
 
     const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      // Stash the event so it can be triggered later.
       setInstallPrompt(e);
     };
 
@@ -49,23 +51,19 @@ const PwaInstallButton = () => {
 
   const handleInstallClick = async () => {
     if (!installPrompt) {
-      if (isIos) {
-        toast({
-          title: 'iOS Installation',
-          description: 'To install, tap the Share button and select "Add to Home Screen".',
-        });
-      }
       return;
     }
     
     try {
+        // Show the install prompt
         installPrompt.prompt();
+        // Wait for the user to respond to the prompt
         const { outcome } = await installPrompt.userChoice;
         
         if (outcome === 'accepted') {
           toast({
             title: 'Installation Started',
-            description: 'The app is being added to your home screen.',
+            description: 'The app is being added to your device.',
           });
           setInstallPrompt(null);
         }
@@ -87,12 +85,12 @@ const PwaInstallButton = () => {
                 <span className="font-semibold">Download Jasa App</span>
               </SidebarMenuButton>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
               <AlertDialogHeader>
                 <AlertDialogTitle>
-                  {isStandalone ? 'App Already Installed' : (installPrompt || isIos ? 'Install Jasa Essential' : 'Installation Status')}
+                  {isStandalone ? 'App Already Installed' : (installPrompt ? 'Install Jasa Essential' : 'How to Install')}
                 </AlertDialogTitle>
-                <AlertDialogDescription>
+                <AlertDialogDescription className="text-sm">
                   {isStandalone ? (
                     'You are already using the Jasa App in standalone mode! You can find it on your home screen or app drawer.'
                   ) : isIos ? (
@@ -100,7 +98,7 @@ const PwaInstallButton = () => {
                       <p>To install Jasa Essential on your iPhone/iPad:</p>
                       <ol className="list-decimal pl-5 space-y-2">
                         <li className="flex items-center gap-2">
-                          Tap the Share button <Share className="h-4 w-4 inline" /> in Safari.
+                          Tap the Share button <Share className="h-4 w-4 inline text-blue-500" /> in Safari.
                         </li>
                         <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
                         <li>Tap <strong>"Add"</strong> in the top right corner.</li>
@@ -109,14 +107,28 @@ const PwaInstallButton = () => {
                   ) : installPrompt ? (
                     'Install this app on your device for a faster and smoother shopping experience. It works just like a native app.'
                   ) : (
-                    'The installation prompt is not available right now. This can happen if the app is already installed or if your browser doesn\'t support automatic prompts. Check your home screen or browser menu for "Install App".'
+                    <div className="space-y-4">
+                      <p>If the automatic "Install" button doesn't appear, you can install it manually:</p>
+                      <div className="bg-muted p-3 rounded-md space-y-3">
+                        <p className="font-semibold">For Chrome on Android:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li>Tap the menu <EllipsisVertical className="h-4 w-4 inline" /> in the top right.</li>
+                          <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+                        </ol>
+                        <p className="font-semibold pt-2">For Samsung Internet:</p>
+                        <ol className="list-decimal pl-5 space-y-1">
+                          <li>Tap the menu button at the bottom.</li>
+                          <li>Select <strong>"Add page to"</strong> and then <strong>"Home screen"</strong>.</li>
+                        </ol>
+                      </div>
+                    </div>
                   )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Close</AlertDialogCancel>
-                {installPrompt && (
-                  <AlertDialogAction onClick={handleInstallClick}>
+                {installPrompt && !isStandalone && (
+                  <AlertDialogAction onClick={handleInstallClick} className="bg-blue-600 hover:bg-blue-700 text-white">
                     Install Now
                   </AlertDialogAction>
                 )}

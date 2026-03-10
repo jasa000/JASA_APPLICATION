@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ShoppingCart, MapPin, Phone, Mail, Instagram, Youtube, MessageSquare, Download, Loader2, Share } from 'lucide-react';
+import { ShoppingCart, MapPin, Phone, Mail, Instagram, Youtube, MessageSquare, Download, Loader2, Share, EllipsisVertical } from 'lucide-react';
 import { getContactInfo, addQuery } from '@/lib/data';
 import { useState, useEffect } from 'react';
 import type { ContactInfo } from '@/lib/types';
@@ -85,15 +85,7 @@ export default function Footer() {
   };
 
   const handleInstallApp = async () => {
-    if (!installPrompt) {
-      if (isIos) {
-        toast({
-          title: 'iOS Installation',
-          description: 'To install, tap the Share button and select "Add to Home Screen".',
-        });
-      }
-      return;
-    }
+    if (!installPrompt) return;
     try {
       installPrompt.prompt();
       const { outcome } = await installPrompt.userChoice;
@@ -129,12 +121,12 @@ export default function Footer() {
                     Download Jasa App
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="text-black">
+                <AlertDialogContent className="text-black max-w-[95vw] sm:max-w-lg">
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      {isStandalone ? 'App Already Installed' : (installPrompt || isIos ? 'Download Jasa App' : 'Installation Status')}
+                      {isStandalone ? 'App Already Installed' : (installPrompt ? 'Download Jasa App' : 'How to Install')}
                     </AlertDialogTitle>
-                    <AlertDialogDescription>
+                    <AlertDialogDescription className="text-sm">
                       {isStandalone ? (
                         'You are already using the Jasa App in standalone mode! Check your home screen or app drawer.'
                       ) : isIos ? (
@@ -142,7 +134,7 @@ export default function Footer() {
                           <p>To install Jasa Essential on your iPhone/iPad:</p>
                           <ol className="list-decimal pl-5 space-y-2">
                             <li className="flex items-center gap-2">
-                              Tap the Share button <Share className="h-4 w-4 inline" /> in Safari.
+                              Tap the Share button <Share className="h-4 w-4 inline text-blue-500" /> in Safari.
                             </li>
                             <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
                             <li>Tap <strong>"Add"</strong> in the top right corner.</li>
@@ -151,14 +143,28 @@ export default function Footer() {
                       ) : installPrompt ? (
                         'Download the app for a faster, better shopping experience. It works just like a native application.'
                       ) : (
-                        'Automatic installation is not available. This happens if the app is already installed or your browser doesn\'t support automatic prompts. Look for "Install App" in your browser menu.'
+                        <div className="space-y-4">
+                          <p>If the automatic "Install" button doesn't appear, you can install it manually:</p>
+                          <div className="bg-muted p-3 rounded-md space-y-3">
+                            <p className="font-semibold">For Chrome on Android:</p>
+                            <ol className="list-decimal pl-5 space-y-1">
+                              <li>Tap the menu <EllipsisVertical className="h-4 w-4 inline" /> in the top right.</li>
+                              <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+                            </ol>
+                            <p className="font-semibold pt-2">For Samsung Internet:</p>
+                            <ol className="list-decimal pl-5 space-y-1">
+                              <li>Tap the menu button at the bottom.</li>
+                              <li>Select <strong>"Add page to"</strong> and then <strong>"Home screen"</strong>.</li>
+                            </ol>
+                          </div>
+                        </div>
                       )}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Close</AlertDialogCancel>
-                    {installPrompt && (
-                      <AlertDialogAction onClick={handleInstallApp}>Install Now</AlertDialogAction>
+                    {installPrompt && !isStandalone && (
+                      <AlertDialogAction onClick={handleInstallApp} className="bg-blue-600 hover:bg-blue-700 text-white">Install Now</AlertDialogAction>
                     )}
                   </AlertDialogFooter>
                 </AlertDialogContent>

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -19,16 +20,16 @@ import {
 const PwaInstallButton = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const { toast } = useToast();
-  const [isMounted, setIsReady] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    setIsReady(true);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -62,7 +63,7 @@ const PwaInstallButton = () => {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <SidebarMenuButton className="w-full justify-start gap-2 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
+        <SidebarMenuButton className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground">
           <Download className="h-4 w-4" />
           <span className="font-semibold">Install Jasa App</span>
         </SidebarMenuButton>

@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -161,9 +160,6 @@ export default function AppSidebar() {
                   {theme === 'dark' ? <Sun /> : <Moon />}
               </SidebarMenuButton>
           </SidebarMenuItem>
-          <SidebarMenuItem>
-            <PwaInstallButton />
-          </SidebarMenuItem>
            {user ? (
               <>
                   <SidebarMenuItem>
@@ -249,6 +245,15 @@ export default function AppSidebar() {
         <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2">
             {renderUserActions()}
         </SidebarGroup>
+
+        <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg py-0">
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <PwaInstallButton />
+                </SidebarMenuItem>
+            </SidebarMenu>
+        </SidebarGroup>
+
          <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
             <SidebarMenu>
                 <SidebarMenuItem>

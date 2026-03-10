@@ -1,10 +1,9 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { Download, CheckCircle } from 'lucide-react';
-import { Button } from './ui/button';
+import { Download } from 'lucide-react';
+import { SidebarMenuButton } from './ui/sidebar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,13 +15,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useIsMobile } from '@/hooks/use-mobile';
 
 const PwaInstallButton = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const { toast } = useToast();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const isMobile = useIsMobile();
+  const [isMounted, setIsReady] = useState(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -31,6 +28,7 @@ const PwaInstallButton = () => {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    setIsReady(true);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -52,65 +50,36 @@ const PwaInstallButton = () => {
         }
     } catch (error) {
         console.error('Error during PWA installation:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Installation Failed',
-            description: 'There was an issue starting the installation.',
-        });
     } finally {
         setInstallPrompt(null);
-        setIsDialogOpen(false);
     }
   };
 
-  const renderDialogContent = () => {
-    if (installPrompt) {
-      return (
-        <>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Install Jasa Essentials App?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Install this application on your device for quick and easy access, just like a native app.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleInstallClick}>
-              Install
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </>
-      );
-    }
+  if (!isMounted || !installPrompt) {
+    return null;
+  }
 
-    return (
-      <>
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <SidebarMenuButton className="w-full justify-start gap-2 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary">
+          <Download className="h-4 w-4" />
+          <span className="font-semibold">Install Jasa App</span>
+        </SidebarMenuButton>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            App Not Installable
-          </AlertDialogTitle>
+          <AlertDialogTitle>Install Jasa Essential?</AlertDialogTitle>
           <AlertDialogDescription>
-            This app may already be installed on your device, or your browser may not support PWA installation.
+            Install this app on your device for a faster and smoother shopping experience.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogAction>OK</AlertDialogAction>
+          <AlertDialogCancel>Later</AlertDialogCancel>
+          <AlertDialogAction onClick={handleInstallClick}>
+            Install Now
+          </AlertDialogAction>
         </AlertDialogFooter>
-      </>
-    );
-  };
-
-  return (
-    <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size={isMobile ? "icon" : "default"} className='rounded-full h-9 w-9 md:w-auto text-blue-500 bg-white hover:bg-white/90'>
-          <Download className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
-          <span className="hidden md:inline">Install App</span>
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        {renderDialogContent()}
       </AlertDialogContent>
     </AlertDialog>
   );

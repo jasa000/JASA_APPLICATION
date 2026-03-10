@@ -60,4 +60,4 @@ Add the following variables to your Netlify site configuration (**Site settings 
 - `firestore.rules`: Security rules for the database.
 
 ## Git Repository
-This project is connected to: `https://github.com/Rahulr16184/jasa.git`
+This project is connected to: `https://github.com/jasaessential/JASA_WEBAPP.git`

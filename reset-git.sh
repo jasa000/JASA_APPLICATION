@@ -10,7 +10,7 @@ if [ "$confirm" != "y" ]; then
     exit 1
 fi
 
-REPO_URL="https://github.com/Rahulr16184/jasa.git"
+REPO_URL="https://github.com/jasaessential/JASA_WEBAPP.git"
 
 echo "Cleaning up local git history..."
 rm -rf .git

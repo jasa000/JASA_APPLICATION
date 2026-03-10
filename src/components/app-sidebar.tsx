@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useEffect } from "react"
@@ -247,13 +246,7 @@ export default function AppSidebar() {
             {renderUserActions()}
         </SidebarGroup>
 
-        <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg py-2">
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <PwaInstallButton />
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarGroup>
+        <PwaInstallButton />
 
          <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
             <SidebarMenu>

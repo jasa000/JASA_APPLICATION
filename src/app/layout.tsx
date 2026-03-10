@@ -40,6 +40,14 @@ export const metadata: Metadata = {
     formatDetection: {
       telephone: false,
     },
+    other: {
+      "mobile-web-app-capable": "yes",
+      "apple-mobile-web-app-capable": "yes",
+      "application-name": "Jasa Essential",
+      "apple-mobile-web-app-title": "Jasa Essential",
+      "msapplication-starturl": "/",
+      "msapplication-TileColor": "#2563eb",
+    }
 };
 
 export default function RootLayout({

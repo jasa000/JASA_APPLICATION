@@ -9,16 +9,30 @@
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/jasa/192/192",
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "https://i.imgur.com/gC5sH3S.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://picsum.photos/seed/jasa/512/512",
+      "src": "https://i.imgur.com/gC5sH3S.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?q=80&w=2072&auto=format&fit=crop",
+      "sizes": "2072x1382",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Home Screen"
     }
   ]
 }

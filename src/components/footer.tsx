@@ -1,8 +1,7 @@
-
 "use client";
 
 import Link from 'next/link';
-import { ShoppingCart, MapPin, Phone, Mail, Instagram, Youtube, MessageSquare } from 'lucide-react';
+import { ShoppingCart, MapPin, Phone, Mail, Instagram, Youtube, MessageSquare, Download, Loader2 } from 'lucide-react';
 import { getContactInfo, addQuery } from '@/lib/data';
 import { useState, useEffect } from 'react';
 import type { ContactInfo } from '@/lib/types';
@@ -10,7 +9,6 @@ import { useAuth } from '@/context/auth-provider';
 import { Textarea } from './ui/textarea';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const MAX_WORDS = 100;
@@ -21,9 +19,17 @@ export default function Footer() {
   const [contactInfo, setContactInfo] = useState<ContactInfo | null>(null);
   const [query, setQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
 
   useEffect(() => {
     getContactInfo().then(setContactInfo);
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
   const socialLinks = [
@@ -67,6 +73,23 @@ export default function Footer() {
     }
   };
 
+  const handleInstallApp = async () => {
+    if (!installPrompt) {
+      toast({
+        title: 'App Status',
+        description: 'The app is already installed or your device handles it automatically.',
+      });
+      return;
+    }
+    try {
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') setInstallPrompt(null);
+    } catch (err) {
+      console.error("Install prompt failed", err);
+    }
+  };
+
   const wordCount = query.trim().split(/\s+/).filter(Boolean).length;
   
   const startYear = contactInfo?.startYear || new Date().getFullYear();
@@ -84,6 +107,33 @@ export default function Footer() {
           <p className="mt-2 text-muted-foreground max-w-2xl mx-auto text-gray-400">
             Your trusted partner for quality stationery products for students and professionals. We offer a wide range of supplies at competitive prices.
           </p>
+          
+          <div className="mt-6 flex justify-center">
+             <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="rounded-full text-black hover:bg-gray-100 border-white bg-white">
+                    <Download className="mr-2 h-4 w-4" />
+                    Download Jasa App
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="text-black">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{installPrompt ? 'Download Jasa App' : 'App Status'}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {installPrompt 
+                        ? 'Download the app for a faster, better shopping experience. It works just like a native application.' 
+                        : 'You are already using the Jasa App or your device has it installed. Check your home screen or app drawer.'}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Close</AlertDialogCancel>
+                    {installPrompt && (
+                      <AlertDialogAction onClick={handleInstallApp}>Install Now</AlertDialogAction>
+                    )}
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
@@ -99,7 +149,7 @@ export default function Footer() {
                                 <span className="sr-only">{social.label}</span>
                             </button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
+                        <AlertDialogContent className="text-black">
                             <AlertDialogHeader>
                                 <AlertDialogTitle>Redirect Confirmation</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -138,7 +188,7 @@ export default function Footer() {
                             Submit
                           </Button>
                        </AlertDialogTrigger>
-                       <AlertDialogContent>
+                       <AlertDialogContent className="text-black">
                          <AlertDialogHeader>
                            <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
                            <AlertDialogDescription>

@@ -66,12 +66,12 @@ const PwaInstallButton = () => {
   }
 
   return (
-    <SidebarGroup className="bg-primary/10 dark:bg-primary/20 rounded-lg py-2 my-2 border border-primary/20 mx-2">
+    <SidebarGroup className="bg-blue-600/10 dark:bg-blue-600/20 rounded-lg p-2 mb-2">
       <SidebarMenu>
         <SidebarMenuItem>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <SidebarMenuButton className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground">
+              <SidebarMenuButton className="w-full justify-start gap-2 bg-blue-600 text-white hover:bg-blue-700 hover:text-white transition-colors">
                 <Download className="h-4 w-4" />
                 <span className="font-semibold">Download Jasa App</span>
               </SidebarMenuButton>

@@ -221,6 +221,8 @@ export default function AppSidebar() {
             </div>
             <h2 className="font-headline text-xl font-bold text-sidebar-foreground">JASA ESSENTIAL</h2>
         </div>
+
+        <PwaInstallButton />
         
         {user && (
            <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
@@ -245,8 +247,6 @@ export default function AppSidebar() {
         <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2">
             {renderUserActions()}
         </SidebarGroup>
-
-        <PwaInstallButton />
 
          <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
             <SidebarMenu>

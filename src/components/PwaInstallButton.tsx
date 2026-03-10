@@ -18,21 +18,12 @@ import {
 
 const PwaInstallButton = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
   const { toast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
     
-    // Check if already running in standalone mode (installed app)
-    if (
-      window.matchMedia('(display-mode: standalone)').matches || 
-      (window.navigator as any).standalone === true
-    ) {
-      setIsStandalone(true);
-    }
-
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e);
@@ -46,7 +37,13 @@ const PwaInstallButton = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      toast({
+        title: 'App Status',
+        description: 'The app is already installed or your device handles installation automatically.',
+      });
+      return;
+    }
     
     try {
         installPrompt.prompt();
@@ -64,37 +61,39 @@ const PwaInstallButton = () => {
     }
   };
 
-  // Don't show if:
-  // 1. Not mounted (SSR protection)
-  // 2. Already running as a standalone app
-  // 3. Browser hasn't provided an install prompt (already installed on device or not supported)
-  if (!isMounted || isStandalone || !installPrompt) {
+  if (!isMounted) {
     return null;
   }
 
   return (
-    <SidebarGroup className="bg-primary/10 dark:bg-primary/20 rounded-lg py-2 my-2 border border-primary/20">
+    <SidebarGroup className="bg-primary/10 dark:bg-primary/20 rounded-lg py-2 my-2 border border-primary/20 mx-2">
       <SidebarMenu>
         <SidebarMenuItem>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <SidebarMenuButton className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground">
                 <Download className="h-4 w-4" />
-                <span className="font-semibold">Install Jasa App</span>
+                <span className="font-semibold">Download Jasa App</span>
               </SidebarMenuButton>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Install Jasa Essential?</AlertDialogTitle>
+                <AlertDialogTitle>
+                  {installPrompt ? 'Install Jasa Essential?' : 'App Status'}
+                </AlertDialogTitle>
                 <AlertDialogDescription>
-                  Install this app on your device for a faster and smoother shopping experience. It works just like a native app.
+                  {installPrompt 
+                    ? 'Install this app on your device for a faster and smoother shopping experience. It works just like a native app.' 
+                    : 'You are already using the Jasa App or your device has it installed. You can find it in your app drawer or home screen.'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Later</AlertDialogCancel>
-                <AlertDialogAction onClick={handleInstallClick}>
-                  Install Now
-                </AlertDialogAction>
+                <AlertDialogCancel>Close</AlertDialogCancel>
+                {installPrompt && (
+                  <AlertDialogAction onClick={handleInstallClick}>
+                    Install Now
+                  </AlertDialogAction>
+                )}
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>

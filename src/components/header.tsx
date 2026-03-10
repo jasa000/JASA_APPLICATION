@@ -13,7 +13,6 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/context/notification-provider';
-import PwaInstallButton from './PwaInstallButton';
 
 export default function Header() {
   const { user } = useAuth();
@@ -73,7 +72,6 @@ export default function Header() {
                     <span className="hidden md:inline">Cart</span>
                 </Link>
             </Button>
-             <PwaInstallButton />
           {!user && (
               <Button 
                 asChild

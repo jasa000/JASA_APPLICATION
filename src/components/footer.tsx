@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ShoppingCart, MapPin, Phone, Mail, Instagram, Youtube, MessageSquare, Download, Loader2 } from 'lucide-react';
+import { ShoppingCart, MapPin, Phone, Mail, Instagram, Youtube, MessageSquare, Download, Loader2, Share } from 'lucide-react';
 import { getContactInfo, addQuery } from '@/lib/data';
 import { useState, useEffect } from 'react';
 import type { ContactInfo } from '@/lib/types';
@@ -20,9 +20,20 @@ export default function Footer() {
   const [query, setQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  const [isIos, setIsIos] = useState(false);
+  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
     getContactInfo().then(setContactInfo);
+
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsStandalone(true);
+    }
+
+    // Check if iOS
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    setIsIos(/iphone|ipad|ipod/.test(userAgent));
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -75,10 +86,12 @@ export default function Footer() {
 
   const handleInstallApp = async () => {
     if (!installPrompt) {
-      toast({
-        title: 'App Status',
-        description: 'The app is already installed or your device handles it automatically.',
-      });
+      if (isIos) {
+        toast({
+          title: 'iOS Installation',
+          description: 'To install, tap the Share button and select "Add to Home Screen".',
+        });
+      }
       return;
     }
     try {
@@ -118,11 +131,28 @@ export default function Footer() {
                 </AlertDialogTrigger>
                 <AlertDialogContent className="text-black">
                   <AlertDialogHeader>
-                    <AlertDialogTitle>{installPrompt ? 'Download Jasa App' : 'App Status'}</AlertDialogTitle>
+                    <AlertDialogTitle>
+                      {isStandalone ? 'App Already Installed' : (installPrompt || isIos ? 'Download Jasa App' : 'Installation Status')}
+                    </AlertDialogTitle>
                     <AlertDialogDescription>
-                      {installPrompt 
-                        ? 'Download the app for a faster, better shopping experience. It works just like a native application.' 
-                        : 'You are already using the Jasa App or your device has it installed. Check your home screen or app drawer.'}
+                      {isStandalone ? (
+                        'You are already using the Jasa App in standalone mode! Check your home screen or app drawer.'
+                      ) : isIos ? (
+                        <div className="space-y-4">
+                          <p>To install Jasa Essential on your iPhone/iPad:</p>
+                          <ol className="list-decimal pl-5 space-y-2">
+                            <li className="flex items-center gap-2">
+                              Tap the Share button <Share className="h-4 w-4 inline" /> in Safari.
+                            </li>
+                            <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+                            <li>Tap <strong>"Add"</strong> in the top right corner.</li>
+                          </ol>
+                        </div>
+                      ) : installPrompt ? (
+                        'Download the app for a faster, better shopping experience. It works just like a native application.'
+                      ) : (
+                        'Automatic installation is not available. This happens if the app is already installed or your browser doesn\'t support automatic prompts. Look for "Install App" in your browser menu.'
+                      )}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

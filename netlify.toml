@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  # Using Node 22 as requested in engines
+  NODE_VERSION = "22"
+  # This tells the Netlify plugin to use Edge Functions for some Next.js features
+  NEXT_USE_NETLIFY_EDGE = "true"

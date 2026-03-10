@@ -1,0 +1,76 @@
+{
+  "placeholderImages": [
+    {
+      "id": "product-1",
+      "description": "A scientific calculator.",
+      "imageUrl": "https://images.unsplash.com/photo-1737919156017-2a2a7c9b71cf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzY2llbnRpZmljJTIwY2FsY3VsYXRvcnxlbnwwfHx8fDE3NjE3MTE3Nzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "scientific calculator"
+    },
+    {
+      "id": "product-2",
+      "description": "A bottle of ink.",
+      "imageUrl": "https://images.unsplash.com/photo-1551192335-89a2ee84bf34?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxpbmslMjBib3R0bGV8ZW58MHx8fHwxNzYxNjUwNzg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ink bottle"
+    },
+    {
+      "id": "product-3",
+      "description": "A scientific calculator from another brand.",
+      "imageUrl": "https://images.unsplash.com/photo-1626266061368-46a8f578ddd6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxjYWxjdWxhdG9yfGVufDB8fHx8MTc2MTcxNzc5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "calculator"
+    },
+    {
+      "id": "product-4",
+      "description": "A ball point pen.",
+      "imageUrl": "https://images.unsplash.com/photo-1621596392014-89b1eaf98bb2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxiYWxscG9pbnQlMjBwZW58ZW58MHx8fHwxNzYxNjUwNzg5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "ballpoint pen"
+    },
+    {
+      "id": "category-1",
+      "description": "A collection of stationary items in a cup.",
+      "imageUrl": "https://i.imgur.com/gC5sH3S.png",
+      "imageHint": "stationery"
+    },
+    {
+      "id": "category-2",
+      "description": "A stack of books.",
+      "imageUrl": "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxib29rc3xlbnwwfHx8fDE3NjE2Njg2Mzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "books"
+    },
+    {
+      "id": "category-3",
+      "description": "A photocopier machine.",
+      "imageUrl": "https://images.unsplash.com/photo-1612814266697-e5814f3063cf?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwaG90b2NvcGllcnxlbnwwfHx8fDE3NjE3MjIyNjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "photocopier"
+    },
+    {
+      "id": "category-4",
+      "description": "An electronics kit.",
+      "imageUrl": "https://images.unsplash.com/photo-1689509973848-b258e42f394d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxlbGVjdHJvbmljcyUyMGtpdHxlbnwwfHx8fDE3NjE3MTE3Nzh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "electronics kit"
+    },
+    {
+      "id": "banner-stationary",
+      "description": "A modern, well-organized desk with stationary supplies.",
+      "imageUrl": "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?q=80&w=2072&auto=format&fit=crop",
+      "imageHint": "desk setup"
+    },
+    {
+      "id": "banner-books",
+      "description": "A cozy library aisle with shelves full of books.",
+      "imageUrl": "https://images.unsplash.com/photo-1531988042231-f39a9cc12a9a?q=80&w=1974&auto=format&fit=crop",
+      "imageHint": "library books"
+    },
+    {
+      "id": "banner-xerox",
+      "description": "Close-up of a modern printer in a bright office.",
+      "imageUrl": "https://images.unsplash.com/photo-1604969247983-2944b4e49339?q=80&w=2070&auto=format&fit=crop",
+      "imageHint": "office printer"
+    },
+    {
+      "id": "banner-electronics",
+      "description": "A person soldering an electronics circuit board.",
+      "imageUrl": "https://images.unsplash.com/photo-1555529771-838f59503415?q=80&w=2070&auto=format&fit=crop",
+      "imageHint": "electronics project"
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Replace with your actual domain when deployed
+Sitemap: https://jasa-essential.netlify.app/sitemap.xml

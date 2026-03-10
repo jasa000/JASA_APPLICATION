@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Eye, EyeOff, ShoppingCart, LogIn, UserPlus } from 'lucide-react';
+import { Eye, EyeOff, ShoppingCart, LogIn, UserPlus, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
@@ -33,6 +33,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import Link from 'next/link';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -82,6 +90,11 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
   const [verificationEmail, setVerificationEmail] = useState("");
   const [userToVerify, setUserToVerify] = useState<User | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
+
+  // Forgot Password States
+  const [isForgotPwdOpen, setIsForgotPwdOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [isSendingReset, setIsSendingReset] = useState(false);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -170,8 +183,7 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
   }
   
   async function handlePasswordReset() {
-    const email = loginForm.getValues("email");
-    if (!email) {
+    if (!forgotEmail) {
       toast({
         variant: "destructive",
         title: "Email Required",
@@ -179,13 +191,26 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
       });
       return;
     }
-    setLoading(true);
-    try {
-      await sendPasswordResetEmail(auth, email);
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(forgotEmail)) {
       toast({
-        title: "Password Reset Email Sent",
-        description: "Check your inbox for a reset link.",
+        variant: "destructive",
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
       });
+      return;
+    }
+
+    setIsSendingReset(true);
+    try {
+      await sendPasswordResetEmail(auth, forgotEmail);
+      toast({
+        title: "Reset Link Sent",
+        description: "Check your inbox for instructions to reset your password.",
+      });
+      setIsForgotPwdOpen(false);
+      setForgotEmail("");
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -193,7 +218,7 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
         description: error.message,
       });
     } finally {
-      setLoading(false);
+      setIsSendingReset(false);
     }
   }
 
@@ -228,6 +253,41 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={isForgotPwdOpen} onOpenChange={setIsForgotPwdOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" /> Reset Password
+            </DialogTitle>
+            <DialogDescription>
+              Enter the email address associated with your account and we'll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Email Address</Label>
+              <Input 
+                id="forgot-email" 
+                type="email" 
+                placeholder="m@example.com" 
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handlePasswordReset();
+                }}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex sm:justify-between gap-2">
+            <Button variant="ghost" onClick={() => setIsForgotPwdOpen(false)}>Cancel</Button>
+            <Button onClick={handlePasswordReset} disabled={isSendingReset}>
+              {isSendingReset ? 'Sending...' : 'Send Reset Link'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="w-full max-w-md rounded-xl border border-black dark:border-white bg-background/80 p-4 sm:p-6 shadow-lg backdrop-blur-sm">
           <div className="text-center mb-6">
@@ -290,7 +350,16 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
                                 Remember me
                               </Label>
                             </div>
-                            <Button type="button" variant="link" className="p-0 font-normal h-auto" onClick={handlePasswordReset} disabled={loading}>
+                            <Button 
+                              type="button" 
+                              variant="link" 
+                              className="p-0 font-normal h-auto" 
+                              onClick={() => {
+                                setForgotEmail(loginForm.getValues("email"));
+                                setIsForgotPwdOpen(true);
+                              }} 
+                              disabled={loading}
+                            >
                                 Forgot Password?
                             </Button>
                           </div>

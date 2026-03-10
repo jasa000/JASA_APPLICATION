@@ -27,12 +27,10 @@ const PwaInstallButton = () => {
   useEffect(() => {
     setIsMounted(true);
     
-    // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
       setIsStandalone(true);
     }
 
-    // Device detection
     const userAgent = window.navigator.userAgent.toLowerCase();
     setIsIos(/iphone|ipad|ipod/.test(userAgent));
     
@@ -88,7 +86,7 @@ const PwaInstallButton = () => {
   };
 
   return (
-    <SidebarGroup className="bg-blue-600/10 dark:bg-blue-600/20 rounded-lg p-2 mb-2">
+    <SidebarGroup className="bg-blue-600/10 dark:bg-blue-600/20 rounded-lg p-2 mb-2 mx-2">
       <SidebarMenu>
         <SidebarMenuItem>
           <AlertDialog>
@@ -126,18 +124,18 @@ const PwaInstallButton = () => {
                         <p>If the automatic "Install" button doesn't appear, you can install it manually based on your browser:</p>
                         <div className="bg-muted p-3 rounded-md space-y-3">
                           <div>
-                            <p className="font-semibold">Desktop (Chrome/Edge):</p>
+                            <p className="font-semibold text-foreground">Desktop (Chrome/Edge):</p>
                             <p className="text-xs">Look for the install icon <Download className="h-3 w-3 inline" /> in the address bar (right side).</p>
                           </div>
                           <div>
-                            <p className="font-semibold">Android (Chrome):</p>
+                            <p className="font-semibold text-foreground">Android (Chrome):</p>
                             <ol className="list-decimal pl-5 text-xs space-y-1">
                               <li>Tap the menu <EllipsisVertical className="h-3 w-3 inline" /> in the top right.</li>
                               <li>Select <strong>"Install app"</strong>.</li>
                             </ol>
                           </div>
                           <div>
-                            <p className="font-semibold">Samsung Internet:</p>
+                            <p className="font-semibold text-foreground">Samsung Internet:</p>
                             <p className="text-xs">Tap the menu at the bottom and select <strong>"Add page to"</strong> &gt; <strong>"Home screen"</strong>.</p>
                           </div>
                         </div>

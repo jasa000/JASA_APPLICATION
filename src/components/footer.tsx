@@ -116,49 +116,51 @@ export default function Footer() {
           <div className="mt-6 flex justify-center">
              <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="rounded-full text-black hover:bg-gray-100 border-white bg-white">
+                  <button className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-8 rounded-full text-black hover:bg-gray-100 border-white bg-white">
                     <Download className="mr-2 h-4 w-4" />
                     Download Jasa App
-                  </Button>
+                  </button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="text-black max-w-[95vw] sm:max-w-lg">
                   <AlertDialogHeader>
                     <AlertDialogTitle>
                       {isStandalone ? 'App Already Installed' : (installPrompt ? 'Download Jasa App' : 'How to Install')}
                     </AlertDialogTitle>
-                    <AlertDialogDescription className="text-sm">
-                      {isStandalone ? (
-                        'You are already using the Jasa App in standalone mode! Check your home screen or app drawer.'
-                      ) : isIos ? (
-                        <div className="space-y-4">
-                          <p>To install Jasa Essential on your iPhone/iPad:</p>
-                          <ol className="list-decimal pl-5 space-y-2">
-                            <li className="flex items-center gap-2">
-                              Tap the Share button <Share className="h-4 w-4 inline text-blue-500" /> in Safari.
-                            </li>
-                            <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
-                            <li>Tap <strong>"Add"</strong> in the top right corner.</li>
-                          </ol>
-                        </div>
-                      ) : installPrompt ? (
-                        'Download the app for a faster, better shopping experience. It works just like a native application.'
-                      ) : (
-                        <div className="space-y-4">
-                          <p>If the automatic "Install" button doesn't appear, you can install it manually:</p>
-                          <div className="bg-muted p-3 rounded-md space-y-3">
-                            <p className="font-semibold">For Chrome on Android:</p>
-                            <ol className="list-decimal pl-5 space-y-1">
-                              <li>Tap the menu <EllipsisVertical className="h-4 w-4 inline" /> in the top right.</li>
-                              <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
-                            </ol>
-                            <p className="font-semibold pt-2">For Samsung Internet:</p>
-                            <ol className="list-decimal pl-5 space-y-1">
-                              <li>Tap the menu button at the bottom.</li>
-                              <li>Select <strong>"Add page to"</strong> and then <strong>"Home screen"</strong>.</li>
+                    <AlertDialogDescription asChild>
+                      <div className="text-sm">
+                        {isStandalone ? (
+                          <p>You are already using the Jasa App in standalone mode! Check your home screen or app drawer.</p>
+                        ) : isIos ? (
+                          <div className="space-y-4">
+                            <p>To install Jasa Essential on your iPhone/iPad:</p>
+                            <ol className="list-decimal pl-5 space-y-2">
+                              <li className="flex items-center gap-2">
+                                Tap the Share button <Share className="h-4 w-4 inline text-blue-500" /> in Safari.
+                              </li>
+                              <li>Scroll down and tap <strong>"Add to Home Screen"</strong>.</li>
+                              <li>Tap <strong>"Add"</strong> in the top right corner.</li>
                             </ol>
                           </div>
-                        </div>
-                      )}
+                        ) : installPrompt ? (
+                          <p>Download the app for a faster, better shopping experience. It works just like a native application.</p>
+                        ) : (
+                          <div className="space-y-4">
+                            <p>If the automatic "Install" button doesn't appear, you can install it manually:</p>
+                            <div className="bg-muted p-3 rounded-md space-y-3">
+                              <p className="font-semibold text-foreground">For Chrome on Android:</p>
+                              <ol className="list-decimal pl-5 space-y-1">
+                                <li>Tap the menu <EllipsisVertical className="h-4 w-4 inline" /> in the top right.</li>
+                                <li>Select <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+                              </ol>
+                              <p className="font-semibold text-foreground pt-2">For Samsung Internet:</p>
+                              <ol className="list-decimal pl-5 space-y-1">
+                                <li>Tap the menu button at the bottom.</li>
+                                <li>Select <strong>"Add page to"</strong> and then <strong>"Home screen"</strong>.</li>
+                              </ol>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

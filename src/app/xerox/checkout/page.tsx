@@ -458,8 +458,8 @@ export default function XeroxCheckoutPage() {
                     <FormField control={addressForm.control} name="postalCode" render={({ field }) => (<FormItem><FormLabel>Postal Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="secondary" onClick={() => setIsAddingAddress(false)}>Cancel</Button>
-                  <Button type="submit" disabled={addressForm.formState.isSubmitting}>{addressForm.formState.isSubmitting ? "Saving..." : "Save Address"}</Button>
+                    <Button type="button" variant="secondary" onClick={() => setIsAddingAddress(false)}>Cancel</Button>
+                    <Button type="submit" disabled={addressForm.formState.isSubmitting}>{addressForm.formState.isSubmitting ? "Saving..." : "Save Address"}</Button>
                 </div>
             </form>
         </Form>
@@ -563,12 +563,10 @@ export default function XeroxCheckoutPage() {
         <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2 space-y-8">
               <Form {...checkoutForm}>
-                <form>
                   {renderAddressSelection()}
                   {isAddingAddress && renderAddressForm()}
                   {renderMobileSection()}
                   {renderSellerSelection()}
-                </form>
               </Form>
             </div>
             
@@ -605,3 +603,4 @@ export default function XeroxCheckoutPage() {
     </>
   );
 }
+

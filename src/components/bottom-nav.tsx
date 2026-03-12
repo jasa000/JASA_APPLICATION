@@ -1,9 +1,8 @@
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, History, ShoppingCart } from "lucide-react";
+import { Home, History, ShoppingCart, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCart } from "@/hooks/use-cart";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +18,12 @@ export default function BottomNav() {
       href: "/",
       icon: Home,
       active: pathname === "/",
+    },
+    {
+      label: "Xerox",
+      href: "/xerox",
+      icon: Printer,
+      active: pathname.startsWith("/xerox"),
     },
     {
       label: "Orders",

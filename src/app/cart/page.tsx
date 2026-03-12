@@ -19,6 +19,16 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { getOrderSettings } from "@/lib/data";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const categories: { value: string, label: string }[] = [
     { value: 'all', label: 'All Items' },
@@ -68,6 +78,7 @@ export default function CartPage() {
   const [orderSettings, setOrderSettings] = useState<OrderSettings | null>(null);
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<CartItem | null>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -93,6 +104,17 @@ export default function CartPage() {
     };
     fetchSettings();
   }, [toast, isClient]);
+
+  const confirmRemove = () => {
+    if (itemToRemove) {
+      removeItem(itemToRemove.id);
+      toast({
+        title: "Item Removed",
+        description: `"${itemToRemove.type === 'xerox' ? itemToRemove.xerox.file?.name : itemToRemove.product.name}" has been removed.`,
+      });
+      setItemToRemove(null);
+    }
+  };
 
 
   const handleToggleSelectedItem = (itemId: string) => {
@@ -334,16 +356,19 @@ export default function CartPage() {
                           if (item.type === 'xerox') {
                             const xerox = item.xerox;
                             return (
-                              <Card key={item.id} className="flex items-center overflow-hidden">
-                                  <div className="p-4 flex items-center h-full">
+                              <Card key={item.id} className="flex items-start overflow-hidden">
+                                  <div className="p-4 flex flex-col items-center justify-start gap-4 self-stretch">
                                       <Checkbox
                                           id={`select-${item.id}`}
                                           checked={selectedItems.includes(item.id)}
                                           onCheckedChange={() => handleToggleSelectedItem(item.id)}
-                                          className="h-5 w-5"
+                                          className="h-5 w-5 mt-1"
                                        />
+                                       <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setItemToRemove(item)}>
+                                            <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
+                                       </Button>
                                   </div>
-                                  <div className="relative h-24 w-24 flex-shrink-0 sm:h-32 sm:w-32 bg-muted flex items-center justify-center">
+                                  <div className="relative h-24 w-24 flex-shrink-0 sm:h-32 sm:w-32 bg-muted flex items-center justify-center self-center">
                                     <FileText className="h-10 w-10 text-muted-foreground" />
                                   </div>
                                   <div className="flex flex-grow flex-col gap-2 p-4">
@@ -357,7 +382,6 @@ export default function CartPage() {
                                             <Input type="number" min="1" value={item.quantity} onChange={(e) => { const newQuantity = parseInt(e.target.value, 10); if (!isNaN(newQuantity)) { handleQuantityChange(item.id, newQuantity); } }} className="h-9 w-12 border-0 text-center text-base font-medium focus-visible:ring-0" aria-label={`Quantity for ${xerox.file?.name}`} />
                                             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleQuantityChange(item.id, item.quantity + 1)}> <Plus className="h-4 w-4" /> </Button>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeItem(item.id)} aria-label={`Remove ${xerox.file?.name} from cart`}> <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" /> </Button>
                                       </div>
                                   </div>
                               </Card>
@@ -367,16 +391,19 @@ export default function CartPage() {
                           const mainImage = product.imageNames && product.imageNames.length > 0 ? product.imageNames[0] : null;
                           const hasDiscount = product.discountPrice && product.discountPrice < product.price;
                           return (
-                            <Card key={product.id} className="flex items-center overflow-hidden">
-                                <div className="p-4 flex items-center h-full">
+                            <Card key={product.id} className="flex items-start overflow-hidden">
+                                <div className="p-4 flex flex-col items-center justify-start gap-4 self-stretch">
                                     <Checkbox
                                         id={`select-${product.id}`}
                                         checked={selectedItems.includes(product.id)}
                                         onCheckedChange={() => handleToggleSelectedItem(product.id)}
-                                        className="h-5 w-5"
+                                        className="h-5 w-5 mt-1"
                                      />
+                                    <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setItemToRemove(item)}>
+                                        <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
+                                    </Button>
                                 </div>
-                                <div className="relative h-24 w-24 flex-shrink-0 sm:h-32 sm:w-32 bg-muted">
+                                <div className="relative h-24 w-24 flex-shrink-0 sm:h-32 sm:w-32 bg-muted self-center">
                                   {mainImage ? (
                                       <Image
                                         src={mainImage}
@@ -437,15 +464,6 @@ export default function CartPage() {
                                               <Plus className="h-4 w-4" />
                                           </Button>
                                       </div>
-                                      <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-9 w-9"
-                                          onClick={() => removeItem(product.id)}
-                                          aria-label={`Remove ${product.name} from cart`}
-                                      >
-                                          <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
-                                      </Button>
                                   </div>
                                 </div>
                             </Card>
@@ -463,6 +481,20 @@ export default function CartPage() {
             </div>
         </div>
       </Tabs>
+      <AlertDialog open={!!itemToRemove} onOpenChange={(open) => !open && setItemToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove "{itemToRemove?.type === 'xerox' ? itemToRemove.xerox.file?.name : itemToRemove?.product.name}" from your cart. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemove}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

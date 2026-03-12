@@ -53,13 +53,15 @@ export default function BottomNav() {
               item.active ? "text-primary" : "text-muted-foreground"
             )}
           >
-            <div className={cn(
-              "relative flex h-8 w-12 items-center justify-center rounded-full transition-colors",
-              item.active ? "bg-primary/10" : "hover:bg-muted"
-            )}>
-              <item.icon className="h-5 w-5" />
+            <div className="relative">
+              <div className={cn(
+                "flex h-8 w-12 items-center justify-center rounded-full transition-colors",
+                item.active ? "bg-primary/10" : "hover:bg-muted"
+              )}>
+                <item.icon className="h-5 w-5" />
+              </div>
               {item.badge && (
-                <Badge className="absolute -right-1 -top-1 h-4 min-w-[1rem] justify-center p-0 text-[10px]">
+                <Badge className="absolute top-0 right-0 h-4 min-w-[1rem] justify-center p-0 text-[10px] translate-x-1 -translate-y-1">
                   {item.badge}
                 </Badge>
               )}

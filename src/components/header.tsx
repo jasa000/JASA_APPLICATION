@@ -1,16 +1,12 @@
 
 "use client";
 
-import { Bell, LogIn, Search, ShoppingCart, User, UserPlus, ShoppingBag, Home } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Bell, LogIn, ShoppingCart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-provider';
-import { usePathname } from 'next/navigation';
-import Image from 'next/image';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/context/notification-provider';
 
@@ -18,7 +14,6 @@ export default function Header() {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
   const isMobile = useIsMobile();
-  const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-header text-header-foreground">
@@ -47,12 +42,6 @@ export default function Header() {
         </div>
 
         <div className="flex items-center justify-end space-x-2">
-            <Button asChild variant="outline" size={isMobile ? "icon" : "default"} className='rounded-full h-9 w-9 md:w-auto text-blue-500 bg-white hover:bg-white/90'>
-              <Link href="/">
-                <Home className={isMobile ? "h-5 w-5" : "h-4 w-4"}/>
-                <span className="hidden md:inline">Home</span>
-              </Link>
-            </Button>
             {user && (
               <Button asChild variant="ghost" size="icon" className='relative rounded-full h-9 w-9 text-white hover:bg-white/20'>
                   <Link href="/notifications">
@@ -66,12 +55,6 @@ export default function Header() {
                   </Link>
               </Button>
             )}
-            <Button asChild variant="outline" size={isMobile ? "icon" : "default"} className='rounded-full h-9 w-9 md:w-auto text-blue-500 bg-white hover:bg-white/90'>
-                <Link href="/cart">
-                    <ShoppingCart className={isMobile ? "h-5 w-5" : "h-4 w-4"}/>
-                    <span className="hidden md:inline">Cart</span>
-                </Link>
-            </Button>
           {!user && (
               <Button 
                 asChild

@@ -32,12 +32,12 @@ export default function ScrollToTop() {
   }, []);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 no-print">
+    <div className="fixed bottom-20 right-6 z-50 no-print">
       <Button
         size="icon"
         onClick={scrollToTop}
         className={cn(
-          'h-14 w-14 rounded-full bg-green-600 text-white shadow-lg hover:bg-green-700 active:scale-95 transition-opacity',
+          'h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-opacity',
           isVisible ? 'opacity-100' : 'opacity-0'
         )}
         aria-label="Scroll to top"

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -48,12 +49,12 @@ export default function BottomNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "relative flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary",
+              "flex flex-col items-center justify-center gap-1 text-xs font-medium transition-colors hover:text-primary",
               item.active ? "text-primary" : "text-muted-foreground"
             )}
           >
             <div className={cn(
-              "flex h-8 w-12 items-center justify-center rounded-full transition-colors",
+              "relative flex h-8 w-12 items-center justify-center rounded-full transition-colors",
               item.active ? "bg-primary/10" : "hover:bg-muted"
             )}>
               <item.icon className="h-5 w-5" />

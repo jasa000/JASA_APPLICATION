@@ -35,7 +35,6 @@ import Image from "next/image";
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { getShops } from "@/lib/shops";
-import PwaInstallButton from "./PwaInstallButton";
 
 export default function AppSidebar() {
   const { user, loading } = useAuth()
@@ -222,8 +221,6 @@ export default function AppSidebar() {
             <h2 className="font-headline text-xl font-bold text-sidebar-foreground">JASA ESSENTIAL</h2>
         </div>
 
-        <PwaInstallButton />
-        
         {user && (
            <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
               <SidebarMenu>

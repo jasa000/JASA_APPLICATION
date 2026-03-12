@@ -403,34 +403,38 @@ export default function CartPage() {
                                         <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
                                     </Button>
                                 </div>
-                                <div className="relative h-24 w-24 flex-shrink-0 sm:h-32 sm:w-32 bg-muted self-center">
-                                  {mainImage ? (
-                                      <Image
-                                        src={mainImage}
-                                        alt={product.name}
-                                        fill
-                                        className="object-cover"
-                                      />
-                                  ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground font-bold text-xl">
-                                      JASA
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex flex-grow flex-col gap-2 p-4">
-                                  <div>
-                                      <h2 className="font-headline text-lg font-semibold truncate">{product.name}</h2>
-                                      <div className="flex items-baseline gap-2">
-                                          <p className="text-lg font-bold text-primary">
-                                              Rs {hasDiscount ? product.discountPrice?.toFixed(2) : product.price.toFixed(2)}
-                                          </p>
-                                          {hasDiscount && (
-                                              <p className="text-sm text-muted-foreground line-through">
-                                              Rs {product.price.toFixed(2)}
-                                              </p>
-                                          )}
+                                <Link href={`/product/${product.id}`} className="flex-shrink-0 self-center">
+                                  <div className="relative h-24 w-24 sm:h-32 sm:w-32 bg-muted">
+                                    {mainImage ? (
+                                        <Image
+                                          src={mainImage}
+                                          alt={product.name}
+                                          fill
+                                          className="object-cover"
+                                        />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground font-bold text-xl">
+                                        JASA
                                       </div>
+                                    )}
                                   </div>
+                                </Link>
+                                <div className="flex flex-grow flex-col gap-2 p-4">
+                                  <Link href={`/product/${product.id}`}>
+                                    <div>
+                                        <h2 className="font-headline text-lg font-semibold truncate">{product.name}</h2>
+                                        <div className="flex items-baseline gap-2">
+                                            <p className="text-lg font-bold text-primary">
+                                                Rs {hasDiscount ? product.discountPrice?.toFixed(2) : product.price.toFixed(2)}
+                                            </p>
+                                            {hasDiscount && (
+                                                <p className="text-sm text-muted-foreground line-through">
+                                                Rs {product.price.toFixed(2)}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                  </Link>
                                   <div className="flex items-center gap-4">
                                       <div className="flex items-center gap-1 rounded-md border">
                                           <Button

@@ -6,7 +6,7 @@ import type { XeroxService, XeroxOption, PaperSample, OrderSettings, XeroxDocume
 import { HARDCODED_XEROX_OPTIONS } from "@/lib/xerox-options";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, FileUp, XCircle, FileText, ShoppingCart, Plus, Minus, Pencil, ListOrdered, Images, Link as LinkIcon, CheckCircle, RefreshCw, Trash2, Info } from "lucide-react";
+import { Loader2, FileUp, XCircle, FileText, ShoppingCart, Plus, Minus, Pencil, ListOrdered, Images, Link as LinkIcon, CheckCircle, RefreshCw, Trash2, Info, ShieldCheck, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -72,7 +72,7 @@ type DocumentState = {
 type UploadStatus = {
     status: 'pending' | 'uploading' | 'success' | 'error' | 'skipped';
     progress: number;
-    url?: string | null; // Allow null for manual collection
+    url?: string | null;
     error?: string;
 };
 
@@ -90,7 +90,6 @@ type DocumentPriceDetails = {
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
     if (!rules || rules.length === 0) return { charge: 0, nextTierInfo: null };
 
-    // Sort rules by the 'from' value
     const sortedRules = [...rules].sort((a, b) => a.from - b.from);
 
     for (const rule of sortedRules) {
@@ -109,7 +108,7 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
             return { charge: rule.charge, nextTierInfo };
         }
     }
-    return { charge: 0, nextTierInfo: null }; // Default if no rule matches
+    return { charge: 0, nextTierInfo: null };
 };
 
 
@@ -301,9 +300,14 @@ export default function XeroxPageClient() {
   const [documents, setDocuments] = useState<DocumentState[]>([]);
   const nextId = useRef(0);
   
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, UploadStatus>>({});
-  const [overallProgress, setOverallProgress] = useState(0);
+  const [estimatedTime, setEstimatedTime] = useState<string>("");
+  
+  const uploadStartTime = useRef<number | null>(null);
+  const totalBytes = useRef<number>(0);
+  const uploadedBytesMap = useRef<Record<number, number>>({});
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -324,18 +328,16 @@ export default function XeroxPageClient() {
         setPaperSamples(fetchedPaperSamples);
         setOrderSettings(fetchedOrderSettings);
 
-        // Load documents from session storage after fetching necessary data
-        const storedDocs = sessionStorage.getItem('xeroxDocuments');
-        if (storedDocs) {
-            const parsedDocs: DocumentState[] = JSON.parse(storedDocs);
+        const restoredDocs = sessionStorage.getItem('xeroxDocuments');
+        if (restoredDocs) {
+            const parsedDocs: DocumentState[] = JSON.parse(restoredDocs);
             if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
-                // We need to re-create file objects as they can't be stored in JSON
-                const restoredDocs = parsedDocs.map(doc => ({
+                const hydratedDocs = parsedDocs.map(doc => ({
                     ...doc,
                     file: new File([], doc.fileDetails?.name || 'restored-file', { type: doc.fileDetails?.type }),
                 }));
-                setDocuments(restoredDocs);
-                nextId.current = Math.max(...restoredDocs.map(d => d.id)) + 1;
+                setDocuments(hydratedDocs);
+                nextId.current = Math.max(...hydratedDocs.map(d => d.id)) + 1;
             }
         }
         
@@ -364,21 +366,10 @@ export default function XeroxPageClient() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    const statuses = Object.values(uploadStatus);
-    if (statuses.length === 0) {
-        setOverallProgress(0);
-        return;
-    }
-    const totalProgress = statuses.reduce((acc, s) => acc + s.progress, 0);
-    setOverallProgress(totalProgress / statuses.length);
-  }, [uploadStatus]);
-
   const addNewDocument = async (file: File) => {
     const newDocId = nextId.current++;
     const defaultPaperType = paperTypes.length > 0 ? paperTypes[0] : null;
 
-    // Show initial state immediately
     const initialDocumentState: DocumentState = {
       id: newDocId,
       file: file,
@@ -395,12 +386,10 @@ export default function XeroxPageClient() {
     };
     setDocuments(prev => [...prev, initialDocumentState]);
 
-    // Then, asynchronously get page count
     const pages = await getPageCount(file);
     if (pages !== undefined) {
       updateDocumentState(newDocId, { fileDetails: { ...initialDocumentState.fileDetails!, pages } });
     } else {
-      // Handle error case where page count couldn't be determined
       removeDocument(newDocId);
     }
   };
@@ -421,11 +410,9 @@ export default function XeroxPageClient() {
             if (newPaperDetails) {
                 if (!newPaperDetails.colorOptionIds?.includes(updatedDoc.selectedColorOption)) updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
                 
-                // Ensure format type is valid
                 if (!newPaperDetails.formatTypeIds?.includes(updatedDoc.selectedFormatType)) {
                   updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
                 }
-                // If only 1 page, force 'front' if available
                 if (updatedDoc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
                    updatedDoc.selectedFormatType = 'front';
                 }
@@ -459,7 +446,6 @@ export default function XeroxPageClient() {
         const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
         return pdf.numPages;
       }
-      // For any other file type, we don't know, so return 1 as a default.
       return 1;
     } catch (error) {
       console.error("Error getting page count:", error);
@@ -547,7 +533,7 @@ export default function XeroxPageClient() {
   const finalTotalPrice = useMemo(() => subtotal + deliveryInfo.charge, [subtotal, deliveryInfo.charge]);
 
     const uploadSingleDocument = async (doc: DocumentState): Promise<string | null> => {
-        if (doc.file.size > 1 * 1024 * 1024) { // 1MB limit
+        if (doc.file.size > 1 * 1024 * 1024) { 
              setUploadStatus(prev => ({
                 ...prev,
                 [doc.id]: { status: 'skipped', progress: 100, url: null, error: "File exceeds 1MB limit." }
@@ -560,15 +546,29 @@ export default function XeroxPageClient() {
             [doc.id]: { status: 'uploading', progress: 0 }
         }));
 
-        return new Promise<string | null>((resolve) => {
+        return new Promise<string | null>((resolve, reject) => {
             const xhr = new XMLHttpRequest();
             xhr.open("POST", "/api/upload", true);
-            xhr.timeout = 120000; // 2 minutes timeout
+            xhr.timeout = 120000; 
 
             xhr.upload.onprogress = (event) => {
                 if (event.lengthComputable) {
                     const percentComplete = Math.round((event.loaded / event.total) * 100);
                     setUploadStatus(prev => ({ ...prev, [doc.id]: { ...prev[doc.id], progress: percentComplete, status: 'uploading' }}));
+                    
+                    uploadedBytesMap.current[doc.id] = event.loaded;
+                    const totalUploaded = Object.values(uploadedBytesMap.current).reduce((a, b) => a + b, 0);
+                    const elapsedSeconds = (Date.now() - (uploadStartTime.current || Date.now())) / 1000;
+                    
+                    if (elapsedSeconds > 1) {
+                        const speed = totalUploaded / elapsedSeconds; 
+                        const remainingBytes = totalBytes.current - totalUploaded;
+                        const remainingSeconds = remainingBytes / speed;
+                        
+                        if (remainingSeconds > 0) {
+                            setEstimatedTime(`${Math.ceil(remainingSeconds)} seconds remaining`);
+                        }
+                    }
                 }
             };
 
@@ -581,19 +581,19 @@ export default function XeroxPageClient() {
                     const errorResponse = JSON.parse(xhr.responseText);
                     const errorMessage = errorResponse.error || 'Upload failed.';
                     setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: errorMessage } }));
-                    resolve(null); // Resolve with null on error
+                    reject(new Error(errorMessage));
                 }
             };
 
             xhr.onerror = () => {
                 const errorMessage = "Network error. Please check your connection.";
                 setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: errorMessage } }));
-                resolve(null); // Resolve with null on error
+                reject(new Error(errorMessage));
             };
 
             xhr.ontimeout = () => {
                 setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'skipped', progress: 100, url: null, error: "Upload timed out." } }));
-                resolve(null); // Resolve with null on timeout
+                resolve(null); 
             };
             
             const fd = new FormData();
@@ -635,27 +635,36 @@ export default function XeroxPageClient() {
     }, [documents, documentPrices, uploadStatus, router]);
     
     const handleCheckout = async () => {
-        setIsProcessing(true);
+        setIsUploading(true);
+    };
+    
+    const startUploads = async () => {
         const initialStatuses: Record<number, UploadStatus> = {};
         documents.forEach(doc => {
             initialStatuses[doc.id] = { status: 'pending', progress: 0 };
         });
         setUploadStatus(initialStatuses);
         
+        totalBytes.current = documents.reduce((acc, doc) => acc + doc.file.size, 0);
+        uploadStartTime.current = Date.now();
+        uploadedBytesMap.current = {};
+        setEstimatedTime("Calculating...");
+
         try {
             const uploadPromises = documents.map(doc => uploadSingleDocument(doc));
-            await Promise.allSettled(uploadPromises);
-            storeJobsAndRedirect();
+            await Promise.allSettled(uploadPromises); 
         } catch (error) {
             console.error("An error occurred during the upload batch.", error);
         }
-    };
+    }
 
 
     const handleRetry = (docId: number) => {
         const docToRetry = documents.find(d => d.id === docId);
         if (docToRetry) {
-            uploadSingleDocument(docToRetry);
+            uploadSingleDocument(docToRetry).catch(err => {
+                console.error("Retry failed", err);
+            });
         }
     };
     
@@ -670,12 +679,92 @@ export default function XeroxPageClient() {
         return '';
     };
 
+    const UploadProgressDialog = () => {
+        const allFinished = Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped' || s.status === 'error');
+        const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
+        const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
+
+        useEffect(() => {
+            if (isUploading) {
+                startUploads();
+            }
+        }, []);
+
+        return (
+            <Dialog open={isUploading} onOpenChange={setIsUploading}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <RefreshCw className={cn("h-5 w-5", isProcessing && "animate-spin")} />
+                            Processing Documents
+                        </DialogTitle>
+                        <DialogDescription>
+                            Your files are being securely uploaded. This may take a few moments.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="bg-primary/5 p-3 rounded-lg border border-primary/10 mb-2 flex items-start gap-3">
+                        <ShieldCheck className="h-5 w-5 text-primary mt-0.5" />
+                        <div className="text-xs text-muted-foreground">
+                            <p className="font-semibold text-foreground">Secure Upload</p>
+                            <p>Files are encrypted during transit and stored in a secure cloud bucket accessible only to the fulfillment shop.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 py-4 max-h-[40vh] overflow-y-auto pr-2">
+                        {documents.map(doc => {
+                            const status = uploadStatus[doc.id];
+                            if (!status) return null;
+                            return (
+                                <div key={doc.id} className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <p className="font-medium truncate max-w-[200px]">{doc.fileDetails?.name}</p>
+                                        <span className="text-xs text-muted-foreground">{status.progress}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Progress value={status.progress} className="flex-1 h-2" />
+                                        {status.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                                        {status.status === 'error' && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                                        {status.status === 'skipped' && <Info className="h-4 w-4 text-yellow-500 flex-shrink-0" />}
+                                    </div>
+                                    {status.status === 'error' && <p className="text-[10px] text-red-500 mt-1">{status.error}</p>}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 border-t mt-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{isProcessing ? estimatedTime : "Upload finished"}</span>
+                        </div>
+                        {isProcessing && (
+                            <div className="text-xs font-semibold text-primary animate-pulse">
+                                Uploading...
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                         {hasErrors && (
+                            <Button variant="outline" className="w-full" onClick={() => documents.forEach(doc => {
+                                if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
+                            })}>
+                                <RefreshCw className="mr-2 h-4 w-4"/> Retry Failed Uploads
+                            </Button>
+                         )}
+                         <Button className="w-full" onClick={storeJobsAndRedirect} disabled={isProcessing}>
+                             {isProcessing ? "Waiting for uploads..." : "Proceed to Checkout"}
+                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    };
+
   
   const FinalEstimation = () => {
     if (documents.length === 0) return null;
-    
-    const allFinished = Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped');
-    const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
 
     return (
       <Card>
@@ -748,38 +837,12 @@ export default function XeroxPageClient() {
            <Button 
                 size="lg" 
                 className="w-full"
-                disabled={documents.length === 0 || isProcessing}
+                disabled={documents.length === 0}
                 onClick={handleCheckout}
             >
-                {isProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CheckCircle className="mr-2 h-5 w-5" />}
-                {isProcessing ? 'Processing...' : 'Confirm & Proceed to Checkout'}
+                <CheckCircle className="mr-2 h-5 w-5" />
+                Confirm & Proceed to Checkout
             </Button>
-            {isProcessing && (
-                 <div className="space-y-4 pt-4">
-                    <Progress value={overallProgress} className="h-2" indicatorClassName="bg-green-500" />
-                    {documents.map(doc => {
-                        const status = uploadStatus[doc.id];
-                        if (!status) return null;
-                        return (
-                            <div key={doc.id} className="text-xs text-muted-foreground flex items-center justify-between">
-                                <span className="truncate pr-4">{doc.fileDetails?.name}</span>
-                                {status.status === 'uploading' && <span className="flex-shrink-0">{status.progress}%</span>}
-                                {status.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
-                                {status.status === 'error' && <XCircle className="h-4 w-4 text-red-500" />}
-                                {status.status === 'skipped' && <Info className="h-4 w-4 text-yellow-500" />}
-                            </div>
-                        )
-                    })}
-                    {(hasErrors || allFinished) && (
-                        <div className="flex gap-2">
-                             {hasErrors && <Button variant="outline" size="sm" onClick={() => documents.forEach(doc => {
-                                if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
-                            })}>Retry Failed</Button>}
-                            <Button variant="secondary" size="sm" onClick={storeJobsAndRedirect}>Proceed Anyway</Button>
-                        </div>
-                    )}
-                 </div>
-            )}
         </CardContent>
       </Card>
     );
@@ -950,6 +1013,7 @@ export default function XeroxPageClient() {
 
   return (
     <div className="pb-24">
+      {isUploading && <UploadProgressDialog />}
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
           Xerox &amp; Printing Services
@@ -997,7 +1061,7 @@ export default function XeroxPageClient() {
                     type="button"
                     className="rounded-full h-12 shadow-lg flex items-center justify-center gap-2 px-4"
                     onClick={handleUploadClick}
-                    disabled={isProcessing}
+                    disabled={isUploading}
                 >
                     <Plus className="h-5 w-5" />
                     <span className="font-semibold text-sm">Add Another Document</span>

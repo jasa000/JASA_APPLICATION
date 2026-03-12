@@ -115,6 +115,12 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
     return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
 };
 
+const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
 
 const DocumentCard = ({ document, index, removeDocument, updateDocumentState, paperTypes, allOptions, documentPrices, isLoading }: { 
     document: DocumentState, 
@@ -693,7 +699,15 @@ export default function XeroxPageClient() {
         const [displaySeconds, setDisplaySeconds] = useState(0);
 
         useEffect(() => {
-            setDisplaySeconds(estimatedTime);
+            setDisplaySeconds(currentDisplay => {
+                if (currentDisplay === 0 && estimatedTime > 0) {
+                    return estimatedTime;
+                }
+                if (estimatedTime < currentDisplay) {
+                    return estimatedTime;
+                }
+                return currentDisplay;
+            });
         }, [estimatedTime]);
 
         useEffect(() => {
@@ -702,6 +716,8 @@ export default function XeroxPageClient() {
                     setDisplaySeconds(s => Math.max(0, s - 1));
                 }, 1000);
                 return () => clearTimeout(timer);
+            } else if (!isProcessing) {
+                setDisplaySeconds(0);
             }
         }, [displaySeconds, isProcessing]);
 
@@ -753,7 +769,7 @@ export default function XeroxPageClient() {
                             <Clock className="h-3 w-3" />
                             <span>
                                 {isProcessing 
-                                    ? (displaySeconds > 0 ? `${displaySeconds} seconds remaining` : "Calculating...")
+                                    ? (displaySeconds > 0 ? `${formatTime(displaySeconds)} remaining` : "Calculating...")
                                     : "Upload finished"}
                             </span>
                         </div>
@@ -1074,3 +1090,4 @@ export default function XeroxPageClient() {
     </div>
   );
 }
+

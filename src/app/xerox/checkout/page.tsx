@@ -458,7 +458,7 @@ export default function XeroxCheckoutPage() {
                     <FormField control={addressForm.control} name="postalCode" render={({ field }) => (<FormItem><FormLabel>Postal Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
+                  <Button type="button" variant="secondary" onClick={() => setIsAddingAddress(false)}>Cancel</Button>
                   <Button type="submit" disabled={addressForm.formState.isSubmitting}>{addressForm.formState.isSubmitting ? "Saving..." : "Save Address"}</Button>
                 </div>
             </form>
@@ -605,5 +605,3 @@ export default function XeroxCheckoutPage() {
     </>
   );
 }
-
-    

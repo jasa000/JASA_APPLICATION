@@ -108,6 +108,10 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
             return { charge: rule.charge, nextTierInfo };
         }
     }
+    const lastRule = sortedRules[sortedRules.length - 1];
+    if (lastRule && subtotal >= lastRule.from && lastRule.to === null) {
+        return { charge: lastRule.charge, nextTierInfo: null };
+    }
     return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
 };
 
@@ -302,7 +306,7 @@ export default function XeroxPageClient() {
   
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, UploadStatus>>({});
-  const [estimatedTime, setEstimatedTime] = useState<string>("");
+  const [estimatedTime, setEstimatedTime] = useState<number>(0);
   
   const uploadStartTime = useRef<number | null>(null);
   const totalBytes = useRef<number>(0);
@@ -565,7 +569,7 @@ export default function XeroxPageClient() {
                         const remainingSeconds = remainingBytes / speed;
                         
                         if (remainingSeconds > 0) {
-                            setEstimatedTime(`${Math.ceil(remainingSeconds)} seconds remaining`);
+                            setEstimatedTime(Math.ceil(remainingSeconds));
                         }
                     }
                 }
@@ -644,16 +648,15 @@ export default function XeroxPageClient() {
         });
         setUploadStatus(initialStatuses);
     
-        // Initialize tracking refs for upload speed calculation
         uploadStartTime.current = Date.now();
         totalBytes.current = documents.reduce((acc, doc) => acc + doc.file.size, 0);
         uploadedBytesMap.current = {};
+        setEstimatedTime(0);
         
         try {
             const uploadPromises = documents.map(doc => uploadSingleDocument(doc));
-            await Promise.allSettled(uploadPromises); // Use allSettled to wait for all promises regardless of outcome
+            await Promise.allSettled(uploadPromises);
         } catch (error) {
-            // This catch block might not be necessary with allSettled
             console.error("An error occurred during the upload batch.", error);
         }
     }, [documents, uploadSingleDocument]);
@@ -685,16 +688,29 @@ export default function XeroxPageClient() {
     };
 
   const UploadProgressDialog = () => {
-        const allFinished = Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped');
         const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
+        const [displaySeconds, setDisplaySeconds] = useState(0);
+
+        useEffect(() => {
+            setDisplaySeconds(estimatedTime);
+        }, [estimatedTime]);
+
+        useEffect(() => {
+            if (displaySeconds > 0 && isProcessing) {
+                const timer = setTimeout(() => {
+                    setDisplaySeconds(s => Math.max(0, s - 1));
+                }, 1000);
+                return () => clearTimeout(timer);
+            }
+        }, [displaySeconds, isProcessing]);
 
         return (
             <Dialog open={isUploading} onOpenChange={setIsUploading}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <RefreshCw className={cn("h-5 w-5", Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') && "animate-spin")} />
+                            <RefreshCw className={cn("h-5 w-5", isProcessing && "animate-spin")} />
                             Processing Documents
                         </DialogTitle>
                         <DialogDescription>
@@ -735,9 +751,13 @@ export default function XeroxPageClient() {
                     <div className="flex items-center justify-between py-2 border-t mt-2">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
-                            <span>{Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') ? estimatedTime : "Upload finished"}</span>
+                            <span>
+                                {isProcessing 
+                                    ? (displaySeconds > 0 ? `${displaySeconds} seconds remaining` : "Calculating...")
+                                    : "Upload finished"}
+                            </span>
                         </div>
-                        {Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') && (
+                        {isProcessing && (
                             <div className="text-xs font-semibold text-primary animate-pulse">
                                 Uploading...
                             </div>

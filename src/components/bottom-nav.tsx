@@ -61,7 +61,7 @@ export default function BottomNav() {
                 <item.icon className="h-5 w-5" />
               </div>
               {item.badge && (
-                <Badge className="absolute top-0 right-0 h-4 min-w-[1rem] justify-center p-0 text-[10px] translate-x-1 -translate-y-1">
+                <Badge className="absolute top-0 right-0 h-4 min-w-[1rem] justify-center p-0 text-[10px] translate-x-1 -translate-y-1 pointer-events-none">
                   {item.badge}
                 </Badge>
               )}

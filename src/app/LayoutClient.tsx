@@ -9,6 +9,7 @@ import AppSidebar from "@/components/app-sidebar";
 import FullScreenLoader from "@/components/global-loader";
 import ScrollToTop from "@/components/ui/scroll-to-top";
 import PageLoader from "@/components/page-loader";
+import BottomNav from "@/components/bottom-nav";
 
 export default function LayoutClient({ 
     children,
@@ -28,11 +29,12 @@ export default function LayoutClient({
       <SidebarInset>
         <PageLoader />
         <FullScreenLoader />
-        <div className="flex min-h-screen flex-col">
+        <div className="flex min-h-screen flex-col pb-16">
           <Header />
           <main className="flex-grow">{children}</main>
           {isHomePage && footer}
         </div>
+        <BottomNav />
         <Toaster />
         <ScrollToTop />
       </SidebarInset>

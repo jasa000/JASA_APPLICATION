@@ -25,7 +25,6 @@ const categories: { value: string, label: string }[] = [
     { value: 'stationary', label: 'Stationary' },
     { value: 'books', label: 'Books' },
     { value: 'electronics', label: 'Electronic Kit' },
-    { value: 'xerox', label: 'Xerox' },
 ];
 
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
@@ -300,7 +299,7 @@ export default function CartPage() {
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
         <div className="sticky top-20 z-40 bg-background py-4">
-          <TabsList className="grid w-full grid-cols-5 bg-blue-600 p-1 h-auto rounded-md">
+          <TabsList className="grid w-full grid-cols-4 bg-blue-600 p-1 h-auto rounded-md">
               {categories.map((cat) => (
                   <TabsTrigger 
                     key={cat.value} 

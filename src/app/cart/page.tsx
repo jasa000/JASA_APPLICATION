@@ -346,19 +346,19 @@ export default function CartPage() {
                                   <div className="relative h-24 w-24 flex-shrink-0 sm:h-32 sm:w-32 bg-muted flex items-center justify-center">
                                     <FileText className="h-10 w-10 text-muted-foreground" />
                                   </div>
-                                  <div className="flex flex-grow flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4">
-                                    <div className="min-w-0 flex-1">
-                                      <h2 className="font-headline text-lg font-semibold truncate">{xerox.file?.name || 'Printing Job'}</h2>
-                                      <p className="text-lg font-bold text-primary">Rs {item.price.toFixed(2)}</p>
-                                    </div>
-                                    <div className="flex shrink-0 items-center gap-2">
-                                      <div className="flex items-center gap-1 rounded-md border">
-                                          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleQuantityChange(item.id, item.quantity - 1)} disabled={item.quantity <= 1}> <Minus className="h-4 w-4" /> </Button>
-                                          <Input type="number" min="1" value={item.quantity} onChange={(e) => { const newQuantity = parseInt(e.target.value, 10); if (!isNaN(newQuantity)) { handleQuantityChange(item.id, newQuantity); } }} className="h-9 w-12 border-0 text-center text-base font-medium focus-visible:ring-0" aria-label={`Quantity for ${xerox.file?.name}`} />
-                                          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleQuantityChange(item.id, item.quantity + 1)}> <Plus className="h-4 w-4" /> </Button>
+                                  <div className="flex flex-grow flex-col gap-2 p-4">
+                                      <div>
+                                        <h2 className="font-headline text-lg font-semibold truncate">{xerox.file?.name || 'Printing Job'}</h2>
+                                        <p className="text-lg font-bold text-primary">Rs {item.price.toFixed(2)}</p>
                                       </div>
-                                      <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeItem(item.id)} aria-label={`Remove ${xerox.file?.name} from cart`}> <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" /> </Button>
-                                    </div>
+                                      <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-1 rounded-md border">
+                                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleQuantityChange(item.id, item.quantity - 1)} disabled={item.quantity <= 1}> <Minus className="h-4 w-4" /> </Button>
+                                            <Input type="number" min="1" value={item.quantity} onChange={(e) => { const newQuantity = parseInt(e.target.value, 10); if (!isNaN(newQuantity)) { handleQuantityChange(item.id, newQuantity); } }} className="h-9 w-12 border-0 text-center text-base font-medium focus-visible:ring-0" aria-label={`Quantity for ${xerox.file?.name}`} />
+                                            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => handleQuantityChange(item.id, item.quantity + 1)}> <Plus className="h-4 w-4" /> </Button>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeItem(item.id)} aria-label={`Remove ${xerox.file?.name} from cart`}> <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" /> </Button>
+                                      </div>
                                   </div>
                               </Card>
                             )
@@ -390,63 +390,63 @@ export default function CartPage() {
                                     </div>
                                   )}
                                 </div>
-                                <div className="flex flex-grow flex-wrap items-center justify-between gap-x-4 gap-y-2 p-4">
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="font-headline text-lg font-semibold truncate">{product.name}</h2>
-                                    <div className="flex items-baseline gap-2">
-                                        <p className="text-lg font-bold text-primary">
-                                            Rs {hasDiscount ? product.discountPrice?.toFixed(2) : product.price.toFixed(2)}
-                                        </p>
-                                        {hasDiscount && (
-                                            <p className="text-sm text-muted-foreground line-through">
-                                            Rs {product.price.toFixed(2)}
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                    <div className="flex items-center gap-1 rounded-md border">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-9 w-9"
-                                            onClick={() => handleQuantityChange(product.id, item.quantity - 1)}
-                                            disabled={item.quantity <= 1}
-                                        >
-                                            <Minus className="h-4 w-4" />
-                                        </Button>
-                                        <Input
-                                            type="number"
-                                            min="1"
-                                            value={item.quantity}
-                                            onChange={(e) => {
-                                                const newQuantity = parseInt(e.target.value, 10);
-                                                if (!isNaN(newQuantity)) {
-                                                    handleQuantityChange(product.id, newQuantity);
-                                                }
-                                            }}
-                                            className="h-9 w-12 border-0 text-center text-base font-medium focus-visible:ring-0"
-                                            aria-label={`Quantity for ${product.name}`}
-                                        />
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-9 w-9"
-                                            onClick={() => handleQuantityChange(product.id, item.quantity + 1)}
-                                        >
-                                            <Plus className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-9 w-9"
-                                        onClick={() => removeItem(product.id)}
-                                        aria-label={`Remove ${product.name} from cart`}
-                                    >
-                                        <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
-                                    </Button>
-                                </div>
+                                <div className="flex flex-grow flex-col gap-2 p-4">
+                                  <div>
+                                      <h2 className="font-headline text-lg font-semibold truncate">{product.name}</h2>
+                                      <div className="flex items-baseline gap-2">
+                                          <p className="text-lg font-bold text-primary">
+                                              Rs {hasDiscount ? product.discountPrice?.toFixed(2) : product.price.toFixed(2)}
+                                          </p>
+                                          {hasDiscount && (
+                                              <p className="text-sm text-muted-foreground line-through">
+                                              Rs {product.price.toFixed(2)}
+                                              </p>
+                                          )}
+                                      </div>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                      <div className="flex items-center gap-1 rounded-md border">
+                                          <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-9 w-9"
+                                              onClick={() => handleQuantityChange(product.id, item.quantity - 1)}
+                                              disabled={item.quantity <= 1}
+                                          >
+                                              <Minus className="h-4 w-4" />
+                                          </Button>
+                                          <Input
+                                              type="number"
+                                              min="1"
+                                              value={item.quantity}
+                                              onChange={(e) => {
+                                                  const newQuantity = parseInt(e.target.value, 10);
+                                                  if (!isNaN(newQuantity)) {
+                                                      handleQuantityChange(product.id, newQuantity);
+                                                  }
+                                              }}
+                                              className="h-9 w-12 border-0 text-center text-base font-medium focus-visible:ring-0"
+                                              aria-label={`Quantity for ${product.name}`}
+                                          />
+                                          <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-9 w-9"
+                                              onClick={() => handleQuantityChange(product.id, item.quantity + 1)}
+                                          >
+                                              <Plus className="h-4 w-4" />
+                                          </Button>
+                                      </div>
+                                      <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-9 w-9"
+                                          onClick={() => removeItem(product.id)}
+                                          aria-label={`Remove ${product.name} from cart`}
+                                      >
+                                          <Trash2 className="h-5 w-5 text-muted-foreground hover:text-destructive" />
+                                      </Button>
+                                  </div>
                                 </div>
                             </Card>
                           )

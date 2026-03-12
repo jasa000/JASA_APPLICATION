@@ -1,7 +1,7 @@
 
 "use client";
 
-import { Bell, LogIn, ShoppingCart } from 'lucide-react';
+import { Bell, LogIn, ShoppingCart, User as UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from './ui/button';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -9,11 +9,21 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-provider';
 import { Badge } from '@/components/ui/badge';
 import { useNotifications } from '@/context/notification-provider';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Header() {
   const { user } = useAuth();
   const { unreadCount } = useNotifications();
   const isMobile = useIsMobile();
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return "";
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-header text-header-foreground">
@@ -43,17 +53,30 @@ export default function Header() {
 
         <div className="flex items-center justify-end space-x-2">
             {user && (
-              <Button asChild variant="ghost" size="icon" className='relative rounded-full h-9 w-9 text-white hover:bg-white/20'>
-                  <Link href="/notifications">
-                      <Bell className="h-5 w-5" />
-                      {unreadCount > 0 && (
-                          <Badge className="absolute -top-1 -right-1 h-5 w-5 justify-center p-0 bg-red-600 text-white hover:bg-red-700">
-                              {unreadCount}
-                          </Badge>
-                      )}
-                      <span className="sr-only">Notifications</span>
+              <>
+                <Button asChild variant="ghost" size="icon" className='relative rounded-full h-9 w-9 text-white hover:bg-white/20'>
+                    <Link href="/notifications">
+                        <Bell className="h-5 w-5" />
+                        {unreadCount > 0 && (
+                            <Badge className="absolute -top-1 -right-1 h-5 w-5 justify-center p-0 bg-red-600 text-white hover:bg-red-700">
+                                {unreadCount}
+                            </Badge>
+                        )}
+                        <span className="sr-only">Notifications</span>
+                    </Link>
+                </Button>
+                
+                <Button asChild variant="ghost" size="icon" className="rounded-full h-9 w-9 p-0 hover:bg-white/20">
+                  <Link href="/profile">
+                    <Avatar className="h-8 w-8 border border-white/20">
+                      <AvatarImage src={user.photoURL || undefined} alt={user.name} />
+                      <AvatarFallback className="bg-blue-700 text-white text-[10px]">
+                        {getInitials(user.displayName || user.name) || <UserIcon className="h-4 w-4" />}
+                      </AvatarFallback>
+                    </Avatar>
                   </Link>
-              </Button>
+                </Button>
+              </>
             )}
           {!user && (
               <Button 

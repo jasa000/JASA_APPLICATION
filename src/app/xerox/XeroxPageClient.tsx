@@ -997,6 +997,7 @@ export default function XeroxPageClient() {
                     type="button"
                     className="rounded-full h-12 shadow-lg flex items-center justify-center gap-2 px-4"
                     onClick={handleUploadClick}
+                    disabled={isProcessing}
                 >
                     <Plus className="h-5 w-5" />
                     <span className="font-semibold text-sm">Add Another Document</span>

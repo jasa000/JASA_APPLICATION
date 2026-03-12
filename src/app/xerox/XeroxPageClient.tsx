@@ -94,7 +94,7 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
 
     for (const rule of sortedRules) {
         const to = rule.to ?? Infinity;
-        if (subtotal >= rule.from && subtotal <= to) {
+        if (subtotal >= rule.from && subtotal < to) {
             let nextTierInfo: string | null = null;
             const nextRule = sortedRules.find(r => r.from > subtotal && r.charge < rule.charge);
             if (nextRule) {
@@ -636,6 +636,33 @@ export default function XeroxPageClient() {
     const handleCheckout = async () => {
         setIsUploading(true);
     };
+
+    const startUploads = useCallback(async () => {
+        const initialStatuses: Record<number, UploadStatus> = {};
+        documents.forEach(doc => {
+            initialStatuses[doc.id] = { status: 'pending', progress: 0 };
+        });
+        setUploadStatus(initialStatuses);
+    
+        // Initialize tracking refs for upload speed calculation
+        uploadStartTime.current = Date.now();
+        totalBytes.current = documents.reduce((acc, doc) => acc + doc.file.size, 0);
+        uploadedBytesMap.current = {};
+        
+        try {
+            const uploadPromises = documents.map(doc => uploadSingleDocument(doc));
+            await Promise.allSettled(uploadPromises); // Use allSettled to wait for all promises regardless of outcome
+        } catch (error) {
+            // This catch block might not be necessary with allSettled
+            console.error("An error occurred during the upload batch.", error);
+        }
+    }, [documents, uploadSingleDocument]);
+
+    useEffect(() => {
+        if (isUploading) {
+          startUploads();
+        }
+    }, [isUploading, startUploads]);
     
     const handleRetry = (docId: number) => {
         const docToRetry = documents.find(d => d.id === docId);
@@ -661,12 +688,6 @@ export default function XeroxPageClient() {
         const allFinished = Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped');
         const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
-
-        useEffect(() => {
-            if (isUploading) {
-                startUploads();
-            }
-        }, []); // Runs only once when the dialog is opened
 
         return (
             <Dialog open={isUploading} onOpenChange={setIsUploading}>
@@ -1033,5 +1054,3 @@ export default function XeroxPageClient() {
     </div>
   );
 }
-
-    

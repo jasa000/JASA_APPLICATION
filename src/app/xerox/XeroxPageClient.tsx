@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -107,7 +108,7 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
             return { charge: rule.charge, nextTierInfo };
         }
     }
-    return { charge: 0, nextTierInfo: null };
+    return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
 };
 
 
@@ -531,10 +532,10 @@ export default function XeroxPageClient() {
   const finalTotalPrice = useMemo(() => subtotal + deliveryInfo.charge, [subtotal, deliveryInfo.charge]);
 
     const uploadSingleDocument = useCallback(async (doc: DocumentState): Promise<string | null> => {
-        if (doc.file.size > 1 * 1024 * 1024) { 
+        if (doc.file.size > 10 * 1024 * 1024) { 
              setUploadStatus(prev => ({
                 ...prev,
-                [doc.id]: { status: 'skipped', progress: 100, url: null, error: "File exceeds 1MB limit." }
+                [doc.id]: { status: 'skipped', progress: 100, url: null, error: "File exceeds 10MB limit. Please upload from the Order Details page." }
             }));
             return null;
         }
@@ -600,32 +601,6 @@ export default function XeroxPageClient() {
         });
     }, []);
     
-    const startUploads = useCallback(async () => {
-        const initialStatuses: Record<number, UploadStatus> = {};
-        documents.forEach(doc => {
-            initialStatuses[doc.id] = { status: 'pending', progress: 0 };
-        });
-        setUploadStatus(initialStatuses);
-        
-        totalBytes.current = documents.reduce((acc, doc) => acc + doc.file.size, 0);
-        uploadStartTime.current = Date.now();
-        uploadedBytesMap.current = {};
-        setEstimatedTime("Calculating...");
-
-        try {
-            const uploadPromises = documents.map(doc => uploadSingleDocument(doc));
-            await Promise.allSettled(uploadPromises); 
-        } catch (error) {
-            console.error("An error occurred during the upload batch.", error);
-        }
-    }, [documents, uploadSingleDocument]);
-
-    useEffect(() => {
-        if (isUploading) {
-            startUploads();
-        }
-    }, [isUploading, startUploads]);
-
     const storeJobsAndRedirect = useCallback(() => {
         const jobsForStorage: _StoredXeroxJob[] = documents.map((doc) => {
             const priceInfo = documentPrices.find(p => p.id === doc.id);
@@ -682,77 +657,92 @@ export default function XeroxPageClient() {
         return '';
     };
 
+  const UploadProgressDialog = () => {
+        const allFinished = Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped');
+        const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
+        const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
+
+        useEffect(() => {
+            if (isUploading) {
+                startUploads();
+            }
+        }, []); // Runs only once when the dialog is opened
+
+        return (
+            <Dialog open={isUploading} onOpenChange={setIsUploading}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <RefreshCw className={cn("h-5 w-5", Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') && "animate-spin")} />
+                            Processing Documents
+                        </DialogTitle>
+                        <DialogDescription>
+                            Your files are being uploaded. Files larger than 10MB or those that take longer than 2 minutes will be skipped. You can upload skipped files later from your Order Details page.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="bg-primary/5 p-3 rounded-lg border border-primary/10 mb-2 flex items-start gap-3">
+                        <ShieldCheck className="h-5 w-5 text-primary mt-0.5" />
+                        <div className="text-xs text-muted-foreground">
+                            <p className="font-semibold text-foreground">Secure Upload</p>
+                            <p>Files are encrypted during transit and stored in a secure cloud bucket accessible only to the fulfillment shop.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 py-4 max-h-[40vh] overflow-y-auto pr-2">
+                        {documents.map(doc => {
+                            const status = uploadStatus[doc.id];
+                            if (!status) return null;
+                            return (
+                                <div key={doc.id} className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <p className="font-medium truncate max-w-[200px]">{doc.fileDetails?.name}</p>
+                                        <span className="text-xs text-muted-foreground">{status.progress}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Progress value={status.progress} className="flex-1 h-2" />
+                                        {status.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                                        {status.status === 'error' && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                                        {status.status === 'skipped' && <Info className="h-4 w-4 text-yellow-500 flex-shrink-0" />}
+                                    </div>
+                                    {status.status === 'error' && <p className="text-[10px] text-red-500 mt-1">{status.error}</p>}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="flex items-center justify-between py-2 border-t mt-2">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>{Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') ? estimatedTime : "Upload finished"}</span>
+                        </div>
+                        {Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') && (
+                            <div className="text-xs font-semibold text-primary animate-pulse">
+                                Uploading...
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
+                          {hasErrors && (
+                            <Button variant="outline" className="w-full" onClick={() => documents.forEach(doc => {
+                                if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
+                            })}>
+                                <RefreshCw className="mr-2 h-4 w-4"/> Retry Failed Uploads
+                            </Button>
+                          )}
+                          <Button className="w-full" onClick={storeJobsAndRedirect} disabled={isProcessing}>
+                              {isProcessing ? "Waiting for uploads..." : "Proceed to Checkout"}
+                          </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        );
+    };
+
   return (
     <div className="pb-24">
-      <Dialog open={isUploading} onOpenChange={setIsUploading}>
-          <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                      <RefreshCw className={cn("h-5 w-5", Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') && "animate-spin")} />
-                      Processing Documents
-                  </DialogTitle>
-                  <DialogDescription>
-                      Your files are being securely uploaded. This may take a few moments.
-                  </DialogDescription>
-              </DialogHeader>
-              
-              <div className="bg-primary/5 p-3 rounded-lg border border-primary/10 mb-2 flex items-start gap-3">
-                  <ShieldCheck className="h-5 w-5 text-primary mt-0.5" />
-                  <div className="text-xs text-muted-foreground">
-                      <p className="font-semibold text-foreground">Secure Upload</p>
-                      <p>Files are encrypted during transit and stored in a secure cloud bucket accessible only to the fulfillment shop.</p>
-                  </div>
-              </div>
-
-              <div className="space-y-4 py-4 max-h-[40vh] overflow-y-auto pr-2">
-                  {documents.map(doc => {
-                      const status = uploadStatus[doc.id];
-                      if (!status) return null;
-                      return (
-                          <div key={doc.id} className="space-y-2">
-                              <div className="flex justify-between items-center text-sm">
-                                  <p className="font-medium truncate max-w-[200px]">{doc.fileDetails?.name}</p>
-                                  <span className="text-xs text-muted-foreground">{status.progress}%</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                  <Progress value={status.progress} className="flex-1 h-2" />
-                                  {status.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />}
-                                  {status.status === 'error' && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
-                                  {status.status === 'skipped' && <Info className="h-4 w-4 text-yellow-500 flex-shrink-0" />}
-                              </div>
-                              {status.status === 'error' && <p className="text-[10px] text-red-500 mt-1">{status.error}</p>}
-                          </div>
-                      );
-                  })}
-              </div>
-
-              <div className="flex items-center justify-between py-2 border-t mt-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      <span>{Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') ? estimatedTime : "Upload finished"}</span>
-                  </div>
-                  {Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') && (
-                      <div className="text-xs font-semibold text-primary animate-pulse">
-                          Uploading...
-                      </div>
-                  )}
-              </div>
-
-              <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2">
-                    {Object.values(uploadStatus).some(s => s.status === 'error') && (
-                      <Button variant="outline" className="w-full" onClick={() => documents.forEach(doc => {
-                          if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
-                      })}>
-                          <RefreshCw className="mr-2 h-4 w-4"/> Retry Failed Uploads
-                      </Button>
-                    )}
-                    <Button className="w-full" onClick={storeJobsAndRedirect} disabled={Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading')}>
-                        {Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading') ? "Waiting for uploads..." : "Proceed to Checkout"}
-                    </Button>
-              </DialogFooter>
-          </DialogContent>
-      </Dialog>
-
+      {isUploading && <UploadProgressDialog />}
       <div className="container mx-auto px-4 py-8 text-center">
         <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
           Xerox &amp; Printing Services
@@ -1043,3 +1033,5 @@ export default function XeroxPageClient() {
     </div>
   );
 }
+
+    

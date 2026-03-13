@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -388,30 +389,25 @@ export default function XeroxPageClient() {
         if (doc.id === id) {
           const updatedDoc = { ...doc, ...updates };
           
-          let newPaperDetails = doc.currentPaperDetails;
+          // If paper type is changed, find new details and reset dependent options
           if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
-              newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
+              const newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
+              updatedDoc.currentPaperDetails = newPaperDetails;
+              if (newPaperDetails) {
+                updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
+                updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
+                updatedDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
+                updatedDoc.selectedBindingType = 'none';
+                updatedDoc.selectedLaminationType = 'none';
+              }
           }
-          updatedDoc.currentPaperDetails = newPaperDetails;
+
+          // If page count is determined or paper type has changed, enforce single-page format rule.
+          const needsFormatCheck = 'fileDetails' in updates || 'selectedPaperType' in updates;
+          if (needsFormatCheck && updatedDoc.fileDetails?.pages === 1) {
+            updatedDoc.selectedFormatType = 'front';
+          }
           
-          if (newPaperDetails) {
-            if (!newPaperDetails.colorOptionIds?.includes(updatedDoc.selectedColorOption)) updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
-            
-            const formatTypeStillValid = newPaperDetails.formatTypeIds?.includes(updatedDoc.selectedFormatType);
-            const isSinglePage = updatedDoc.fileDetails?.pages === 1;
-
-            if (isSinglePage) {
-                if (newPaperDetails.formatTypeIds?.includes('front') && updatedDoc.selectedFormatType !== 'front') {
-                    updatedDoc.selectedFormatType = 'front';
-                }
-            } else if (!formatTypeStillValid) {
-                 updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
-            }
-
-            if (!newPaperDetails.printRatioIds?.includes(updatedDoc.selectedPrintRatio)) updatedDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
-            if (!newPaperDetails.bindingTypeIds?.includes(updatedDoc.selectedBindingType)) updatedDoc.selectedBindingType = 'none';
-            if (!newPaperDetails.laminationTypeIds?.includes(updatedDoc.selectedLaminationType)) updatedDoc.selectedLaminationType = 'none';
-          }
           return updatedDoc;
         }
         return doc;
@@ -731,24 +727,23 @@ export default function XeroxPageClient() {
         useEffect(() => {
             if (isUploading) {
                 startUploads();
-                
-                const timer = setTimeout(() => {
-                    // Re-check isProcessing inside the timeout to get the latest state
+                const uploadTimeout = setTimeout(() => {
                     const stillProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
                     if (stillProcessing) {
                         setShowSkipPrompt(true);
                     }
                 }, 300000); // 5 minutes
 
-                return () => clearTimeout(timer);
+                return () => clearTimeout(uploadTimeout);
             }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [isUploading]);
 
         useEffect(() => {
             if (isUploading && !isProcessing && Object.keys(uploadStatus).length > 0) {
                 storeJobsAndRedirect();
             }
-        }, [isUploading, isProcessing, uploadStatus]);
+        }, [isUploading, isProcessing, uploadStatus, storeJobsAndRedirect]);
         
         return (
             <Dialog open={isUploading} onOpenChange={setIsUploading}>
@@ -1117,3 +1112,4 @@ export default function XeroxPageClient() {
     </div>
   );
 }
+

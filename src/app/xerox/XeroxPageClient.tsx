@@ -389,8 +389,21 @@ export default function XeroxPageClient() {
     );
   }, []);
 
+  const handlePageCountDetermined = useCallback((docId: number, pages: number) => {
+    setDocuments(prevDocs => prevDocs.map(doc => {
+        if (doc.id !== docId) return doc;
+        
+        const newDoc = { ...doc, fileDetails: { ...doc.fileDetails!, pages } };
+        // If only 1 page, force 'front' if available
+        if (pages === 1 && doc.currentPaperDetails?.formatTypeIds?.includes('front')) {
+            newDoc.selectedFormatType = 'front';
+        }
+        return newDoc;
+    }));
+  }, []); 
+
   const handlePaperTypeChange = useCallback((docId: number, newPaperTypeId: string) => {
-    setDocuments(prev => prev.map(doc => {
+    setDocuments(prevDocs => prevDocs.map(doc => {
         if (doc.id !== docId) return doc;
 
         const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
@@ -401,15 +414,15 @@ export default function XeroxPageClient() {
             selectedPaperType: newPaperTypeId,
             currentPaperDetails: newPaperDetails,
             selectedColorOption: newPaperDetails.colorOptionIds?.[0] || '',
+            selectedFormatType: newPaperDetails.formatTypeIds?.[0] || '',
             selectedPrintRatio: newPaperDetails.printRatioIds?.[0] || '',
             selectedBindingType: 'none',
             selectedLaminationType: 'none',
         };
-
+        
+        // Also check single page rule
         if (doc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
             newDoc.selectedFormatType = 'front';
-        } else {
-            newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
         }
         
         return newDoc;
@@ -435,7 +448,7 @@ export default function XeroxPageClient() {
       return undefined;
     }
   };
-
+  
   const removeDocument = useCallback((id: number) => {
     setDocuments(prev => prev.filter(doc => doc.id !== id));
   }, []);
@@ -462,14 +475,7 @@ export default function XeroxPageClient() {
 
     const pages = await getPageCount(file);
     if (pages !== undefined) {
-      setDocuments(prevDocs => prevDocs.map(doc => {
-          if (doc.id !== newDocId) return doc;
-          const newDoc = { ...doc, fileDetails: { ...doc.fileDetails!, pages } };
-          if (pages === 1 && newDoc.currentPaperDetails?.formatTypeIds?.includes('front')) {
-              newDoc.selectedFormatType = 'front';
-          }
-          return newDoc;
-      }));
+      handlePageCountDetermined(newDocId, pages);
     } else {
       removeDocument(newDocId);
     }
@@ -536,7 +542,7 @@ export default function XeroxPageClient() {
     result.finalPrice = singleCopyPrice * doc.quantity;
 
     return result;
-}, [allOptions.bindingTypes, allOptions.laminationTypes]);
+}, [allOptions.bindingTypes, allOptions.laminationTypes, paperTypes]);
 
   const documentPrices = useMemo(() => {
     return documents.map(doc => calculateDocumentPrice(doc));
@@ -741,20 +747,21 @@ export default function XeroxPageClient() {
         }, [isUploading]);
 
         useEffect(() => {
+            let timer: NodeJS.Timeout;
             if (isUploading && isProcessing) {
-                const timer = setInterval(() => {
-                    setCountdown(prev => {
-                        if (prev <= 1) {
-                            clearInterval(timer);
-                            setShowSkipPrompt(true);
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
-                return () => clearInterval(timer);
+              timer = setInterval(() => {
+                setCountdown((prev) => {
+                  if (prev <= 1) {
+                    clearInterval(timer);
+                    setShowSkipPrompt(true);
+                    return 0;
+                  }
+                  return prev - 1;
+                });
+              }, 1000);
             }
-        }, [isUploading, isProcessing]);
+            return () => clearInterval(timer);
+          }, [isUploading, isProcessing]);
 
         useEffect(() => {
             if (isUploading && !isProcessing && Object.keys(uploadStatus).length > 0) {
@@ -1136,3 +1143,5 @@ export default function XeroxPageClient() {
     </div>
   );
 }
+
+    

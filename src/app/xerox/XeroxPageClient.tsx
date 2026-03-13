@@ -394,7 +394,7 @@ export default function XeroxPageClient() {
         if (doc.id !== docId) return doc;
 
         const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
-        if (!newPaperDetails) return doc; // Should not happen if ID is from the list
+        if (!newPaperDetails) return doc;
 
         const newDoc: DocumentState = {
             ...doc,
@@ -462,11 +462,14 @@ export default function XeroxPageClient() {
 
     const pages = await getPageCount(file);
     if (pages !== undefined) {
-      const updates: Partial<DocumentState> = { fileDetails: { ...initialDocumentState.fileDetails!, pages } };
-      if (pages === 1) {
-          updates.selectedFormatType = 'front';
-      }
-      updateDocumentState(newDocId, updates);
+      setDocuments(prevDocs => prevDocs.map(doc => {
+          if (doc.id !== newDocId) return doc;
+          const newDoc = { ...doc, fileDetails: { ...doc.fileDetails!, pages } };
+          if (pages === 1 && newDoc.currentPaperDetails?.formatTypeIds?.includes('front')) {
+              newDoc.selectedFormatType = 'front';
+          }
+          return newDoc;
+      }));
     } else {
       removeDocument(newDocId);
     }

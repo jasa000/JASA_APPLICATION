@@ -386,36 +386,33 @@ export default function XeroxPageClient() {
   const updateDocumentState = useCallback((id: number, updates: Partial<DocumentState>) => {
     setDocuments(prev =>
       prev.map(doc => {
-        if (doc.id !== id) {
-          return doc;
-        }
+        if (doc.id === id) {
+          const newDoc = { ...doc, ...updates };
 
-        const newDoc = { ...doc, ...updates };
-
-        // Handle paper type change - this resets dependent fields
-        if ('selectedPaperType' in updates) {
-          const newPaperDetails = paperTypes.find(pt => pt.id === newDoc.selectedPaperType) || null;
-          newDoc.currentPaperDetails = newPaperDetails;
-          if (newPaperDetails) {
-            newDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
-            newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
-            newDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
-            newDoc.selectedBindingType = 'none';
-            newDoc.selectedLaminationType = 'none';
-          }
-        }
-
-        // Enforce "Front Only" for single-page documents, but only on relevant changes
-        if (newDoc.fileDetails?.pages === 1) {
-          // Check if file details were just updated OR if paper type was changed
-          const shouldEnforceFormat = 'fileDetails' in updates || 'selectedPaperType' in updates;
+          const paperChanged = 'selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType;
+          const pagesJustSet = 'fileDetails' in updates && updates.fileDetails?.pages !== doc.fileDetails?.pages;
           
-          if (shouldEnforceFormat && newDoc.currentPaperDetails?.formatTypeIds?.includes('front')) {
-            newDoc.selectedFormatType = 'front';
+          if (paperChanged) {
+            const newPaperDetails = paperTypes.find(pt => pt.id === newDoc.selectedPaperType) || null;
+            newDoc.currentPaperDetails = newPaperDetails;
+            if (newPaperDetails) {
+                newDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
+                newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
+                newDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
+                newDoc.selectedBindingType = 'none';
+                newDoc.selectedLaminationType = 'none';
+            }
           }
-        }
 
-        return newDoc;
+          if ((pagesJustSet || paperChanged) && newDoc.fileDetails?.pages === 1) {
+              if (newDoc.currentPaperDetails?.formatTypeIds?.includes('front')) {
+                newDoc.selectedFormatType = 'front';
+              }
+          }
+          
+          return newDoc;
+        }
+        return doc;
       })
     );
   }, [paperTypes]);
@@ -740,7 +737,7 @@ export default function XeroxPageClient() {
 
                 return () => clearTimeout(uploadTimeout);
             }
-        }, [isUploading]);
+        }, [isUploading, isProcessing, startUploads]);
 
         useEffect(() => {
             if (isUploading && !isProcessing && Object.keys(uploadStatus).length > 0) {
@@ -1115,3 +1112,4 @@ export default function XeroxPageClient() {
     </div>
   );
 }
+

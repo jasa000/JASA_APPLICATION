@@ -386,32 +386,36 @@ export default function XeroxPageClient() {
   const updateDocumentState = useCallback((id: number, updates: Partial<DocumentState>) => {
     setDocuments(prev =>
       prev.map(doc => {
-        if (doc.id !== id) {
-          return doc;
-        }
+        if (doc.id !== id) return doc;
+        
+        const newDoc = { ...doc, ...updates };
 
-        let newDoc = { ...doc, ...updates };
-
-        // Handle cascading changes ONLY when a new paper type is selected.
-        if ('selectedPaperType' in updates) {
-            const newPaperDetails = paperTypes.find(pt => pt.id === newDoc.selectedPaperType) || null;
-            newDoc.currentPaperDetails = newPaperDetails;
+        // Handle cascading changes for paper type
+        if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
+          const newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
+          newDoc.currentPaperDetails = newPaperDetails;
+          if (newPaperDetails) {
+            newDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
+            newDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
+            newDoc.selectedBindingType = 'none';
+            newDoc.selectedLaminationType = 'none';
             
-            if (newPaperDetails) {
-                // Reset dependent options
-                newDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
-                newDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
-                newDoc.selectedBindingType = 'none';
-                newDoc.selectedLaminationType = 'none';
-                
-                // Set format, accounting for single-page docs
-                if (newDoc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
-                    newDoc.selectedFormatType = 'front';
-                } else {
-                    newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
-                }
+            // Re-evaluate format type based on page count
+            if (newDoc.fileDetails?.pages === 1) {
+              newDoc.selectedFormatType = 'front';
+            } else {
+              newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.includes(doc.selectedFormatType)
+                ? doc.selectedFormatType
+                : (newPaperDetails.formatTypeIds?.[0] || '');
             }
+          }
         }
+        
+        // Handle initial page count setting
+        if ('fileDetails' in updates && doc.fileDetails?.pages === undefined && updates.fileDetails?.pages === 1) {
+          newDoc.selectedFormatType = 'front';
+        }
+
         return newDoc;
       })
     );
@@ -463,12 +467,7 @@ export default function XeroxPageClient() {
 
     const pages = await getPageCount(file);
     if (pages !== undefined) {
-      const updates: Partial<DocumentState> = { fileDetails: { ...initialDocumentState.fileDetails!, pages } };
-      // Explicitly set format if page count is 1
-      if (pages === 1 && initialDocumentState.currentPaperDetails?.formatTypeIds?.includes('front')) {
-        updates.selectedFormatType = 'front';
-      }
-      updateDocumentState(newDocId, updates);
+      updateDocumentState(newDocId, { fileDetails: { ...initialDocumentState.fileDetails!, pages } });
     } else {
       removeDocument(newDocId);
     }
@@ -1117,4 +1116,5 @@ export default function XeroxPageClient() {
     </div>
   );
 }
+
 

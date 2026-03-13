@@ -379,27 +379,24 @@ export default function XeroxPageClient() {
         if (doc.id === id) {
           const updatedDoc = { ...doc, ...updates };
           
-          if (updatedDoc.fileDetails && updatedDoc.fileDetails.pages === 1 && updatedDoc.selectedFormatType !== 'front') {
-            updatedDoc.selectedFormatType = 'front';
-          }
+          const newPaperDetails = 'selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType 
+              ? paperTypes.find(pt => pt.id === updates.selectedPaperType) || null
+              : doc.currentPaperDetails;
 
-          if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
-            const newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
-            updatedDoc.currentPaperDetails = newPaperDetails;
-            if (newPaperDetails) {
-                if (!newPaperDetails.colorOptionIds?.includes(updatedDoc.selectedColorOption)) updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
-                
-                if (!newPaperDetails.formatTypeIds?.includes(updatedDoc.selectedFormatType)) {
-                  updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
-                }
-                if (updatedDoc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
-                   updatedDoc.selectedFormatType = 'front';
-                }
-
-                if (!newPaperDetails.printRatioIds?.includes(updatedDoc.selectedPrintRatio)) updatedDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
-                if (!newPaperDetails.bindingTypeIds?.includes(updatedDoc.selectedBindingType)) updatedDoc.selectedBindingType = 'none';
-                if (!newPaperDetails.laminationTypeIds?.includes(updatedDoc.selectedLaminationType)) updatedDoc.selectedLaminationType = 'none';
+          updatedDoc.currentPaperDetails = newPaperDetails;
+          
+          if (newPaperDetails) {
+            if (!newPaperDetails.colorOptionIds?.includes(updatedDoc.selectedColorOption)) updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
+            
+            if (updatedDoc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
+                updatedDoc.selectedFormatType = 'front';
+            } else if (!newPaperDetails.formatTypeIds?.includes(updatedDoc.selectedFormatType)) {
+              updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
             }
+
+            if (!newPaperDetails.printRatioIds?.includes(updatedDoc.selectedPrintRatio)) updatedDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
+            if (!newPaperDetails.bindingTypeIds?.includes(updatedDoc.selectedBindingType)) updatedDoc.selectedBindingType = 'none';
+            if (!newPaperDetails.laminationTypeIds?.includes(updatedDoc.selectedLaminationType)) updatedDoc.selectedLaminationType = 'none';
           }
           return updatedDoc;
         }
@@ -615,7 +612,7 @@ export default function XeroxPageClient() {
             };
             
             const fd = new FormData();
-            fd.append("file", file);
+            fd.append("file", doc.file);
             xhr.send(fd);
         });
     }, []);
@@ -692,9 +689,9 @@ export default function XeroxPageClient() {
     }, [documents, uploadSingleDocument]);
 
     useEffect(() => {
-        if (isUploading) {
-          startUploads();
-        }
+      if (isUploading) {
+        startUploads();
+      }
     }, [isUploading, startUploads]);
     
     const handleRetry = (docId: number) => {
@@ -718,7 +715,7 @@ export default function XeroxPageClient() {
     };
 
     const UploadProgressDialog = () => {
-        const [countdown, setCountdown] = useState(300); // 5 minutes
+        const [countdown, setCountdown] = useState(180); // 3 minutes
         const [showSkipPrompt, setShowSkipPrompt] = useState(false);
         const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
@@ -729,7 +726,9 @@ export default function XeroxPageClient() {
                     setCountdown(prev => {
                         if (prev <= 1) {
                             clearInterval(timer);
-                            if(isProcessing) setShowSkipPrompt(true);
+                            if(isProcessing) {
+                                handleSkipAllAndProceed();
+                            }
                             return 0;
                         }
                         return prev - 1;
@@ -741,15 +740,14 @@ export default function XeroxPageClient() {
         }, [isUploading, isProcessing]);
 
         useEffect(() => {
-            if (!isProcessing) {
-                setCountdown(0);
-                setShowSkipPrompt(false);
+            if (!isProcessing && isUploading) {
+                storeJobsAndRedirect();
             }
-        }, [isProcessing]);
+        }, [isProcessing, isUploading]);
         
         return (
             <Dialog open={isUploading} onOpenChange={setIsUploading}>
-                <DialogContent className="max-w-md w-full max-h-[90vh] flex flex-col">
+                <DialogContent className="max-w-md w-full max-h-[90vh] flex flex-col" hideCloseButton>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <RefreshCw className={cn("h-5 w-5", isProcessing && "animate-spin")} />
@@ -763,15 +761,15 @@ export default function XeroxPageClient() {
                     <div className="flex items-center justify-between py-2 border-y">
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Clock className="h-4 w-4" />
-                            <span>Time Limit:</span>
+                            <span>Time Remaining:</span>
                         </div>
                         <div className="text-sm font-semibold text-primary animate-pulse">
                             {formatTime(countdown)}
                         </div>
                     </div>
 
-                    <ScrollArea className="flex-grow">
-                        <div className="space-y-4 pr-4">
+                    <ScrollArea className="flex-grow pr-4">
+                        <div className="space-y-4">
                             {documents.map(doc => {
                                 const status = uploadStatus[doc.id];
                                 if (!status) return null;
@@ -817,9 +815,6 @@ export default function XeroxPageClient() {
                           )}
                           <Button variant="outline" className="w-full" onClick={handleSkipAllAndProceed}>
                               Skip All & Proceed
-                          </Button>
-                          <Button className="w-full" onClick={storeJobsAndRedirect} disabled={isProcessing}>
-                              {isProcessing ? "Waiting for uploads..." : "Proceed to Checkout"}
                           </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1127,4 +1122,3 @@ export default function XeroxPageClient() {
     </div>
   );
 }
-

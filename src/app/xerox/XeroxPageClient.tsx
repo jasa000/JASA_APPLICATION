@@ -87,6 +87,7 @@ type DocumentPriceDetails = {
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
     if (!rules || rules.length === 0) return { charge: 0, nextTierInfo: null };
 
+    // Sort rules by the 'from' value
     const sortedRules = [...rules].sort((a, b) => a.from - b.from);
 
     for (const rule of sortedRules) {
@@ -234,7 +235,7 @@ const DocumentCard = ({ document, index, removeDocument, updateDocumentState, ha
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       {renderOptionSelect(`color-option-${document.id}`, 'Color', document.selectedColorOption, value => updateDocumentState(document.id, { selectedColorOption: value }), document.currentPaperDetails?.colorOptionIds, HARDCODED_XEROX_OPTIONS.colorOptions)}
-                      {renderOptionSelect(`format-type-${document.id}`, 'Format', document.selectedFormatType, value => updateDocumentState(document.id, { selectedFormatType: value }), document.currentPaperDetails?.formatTypeIds, availableFormatTypes, false, pageCount === 1)}
+                      {renderOptionSelect(`format-type-${document.id}`, 'Format', document.selectedFormatType, value => updateDocumentState(document.id, { selectedFormatType: value }), document.currentPaperDetails?.formatTypeIds, availableFormatTypes)}
                       {renderOptionSelect(`print-ratio-${document.id}`, 'Print Ratio', document.selectedPrintRatio, value => updateDocumentState(document.id, { selectedPrintRatio: value }), document.currentPaperDetails?.printRatioIds, HARDCODED_XEROX_OPTIONS.printRatios)}
                       {renderOptionSelect(`binding-type-${document.id}`, 'Binding', document.selectedBindingType, value => updateDocumentState(document.id, { selectedBindingType: value }), document.currentPaperDetails?.bindingTypeIds, allOptions.bindingTypes, true)}
                       {renderOptionSelect(`lamination-type-${document.id}`, 'Lamination', document.selectedLaminationType, value => updateDocumentState(document.id, { selectedLaminationType: value }), document.currentPaperDetails?.laminationTypeIds, allOptions.laminationTypes, true)}
@@ -300,28 +301,7 @@ const UploadProgressDialog = ({
     handleSkipAllAndProceed: () => void;
     storeJobsAndRedirect: () => void;
 }) => {
-    const [showSkipPrompt, setShowSkipPrompt] = useState(false);
-    const [countdown, setCountdown] = useState(300);
-
-    const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
     const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
-
-    useEffect(() => {
-        let timer: NodeJS.Timeout;
-        if (isUploading && isProcessing) {
-          timer = setInterval(() => {
-            setCountdown((prev) => {
-              if (prev <= 1) {
-                clearInterval(timer);
-                setShowSkipPrompt(true);
-                return 0;
-              }
-              return prev - 1;
-            });
-          }, 1000);
-        }
-        return () => clearInterval(timer);
-      }, [isUploading, isProcessing]);
 
     useEffect(() => {
         if (isUploading && !isProcessing && Object.keys(uploadStatus).length > 0) {
@@ -368,25 +348,8 @@ const UploadProgressDialog = ({
                     </div>
                 </ScrollArea>
                 
-                {showSkipPrompt && (
-                    <div className="mt-4 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3 text-center">
-                        <p className="font-semibold text-yellow-700 dark:text-yellow-300">Upload is taking a while.</p>
-                        <p className="text-sm text-muted-foreground">Do you want to skip remaining uploads and proceed?</p>
-                        <div className="mt-2 flex justify-center gap-2">
-                            <Button size="sm" variant="secondary" onClick={() => { setShowSkipPrompt(false); }}>Keep Waiting</Button>
-                            <Button size="sm" variant="destructive" onClick={handleSkipAllAndProceed}>Skip & Proceed</Button>
-                        </div>
-                    </div>
-                )}
-                
-                 {!showSkipPrompt && isProcessing && (
-                     <div className="text-center text-sm text-muted-foreground">
-                        <p>Time remaining: {formatTime(countdown)}</p>
-                    </div>
-                 )}
-
                 <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2 pt-4">
-                      {hasErrors && (
+                      {Object.values(uploadStatus).some(s => s.status === 'error') && (
                         <Button variant="outline" className="w-full" onClick={() => documents.forEach(doc => {
                             if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
                         })}>
@@ -401,134 +364,6 @@ const UploadProgressDialog = ({
         </Dialog>
     );
 };
-
-const PriceListDialog = ({ isLoading, error, services }: { isLoading: boolean, error: string | null, services: XeroxService[] }) => (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95">
-          <ListOrdered className="mr-2 h-4 w-4" /> View Price List
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Xerox &amp; Printing Price List</DialogTitle>
-          <DialogDescription>
-            Prices for various printing and finishing services.
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="flex-grow pr-4">
-          {error ? (
-            <p className="text-center text-destructive">{error}</p>
-          ) : isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-            </div>
-          ) : services.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
-              No printing services are available at the moment.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Service</TableHead>
-                  <TableHead className="text-right">Price</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {services.map((service) => {
-                  const hasDiscount = service.discountPrice != null && service.discountPrice < service.price;
-                  return (
-                    <TableRow key={service.id}>
-                      <TableCell className="font-medium">
-                        <p>{service.name}</p>
-                        {service.unit && <p className="text-xs text-muted-foreground">{service.unit}</p>}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {hasDiscount ? (
-                          <div className="flex flex-col items-end">
-                            <span className="text-base font-bold">Rs {service.discountPrice?.toFixed(2)}</span>
-                            <span className="text-xs text-muted-foreground line-through">Rs {service.price.toFixed(2)}</span>
-                          </div>
-                        ) : (
-                          <span className="text-base font-bold">Rs {service.price.toFixed(2)}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </ScrollArea>
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
-          </DialogClose>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-);
-
-const PaperSamplesDialog = ({ isLoading, paperSamples }: { isLoading: boolean, paperSamples: PaperSample[] }) => (
-    <Dialog>
-        <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95"><Images className="mr-2 h-4 w-4"/> View Formats</Button>
-        </DialogTrigger>
-        <DialogContent className="max-h-[80vh] flex flex-col">
-            <DialogHeader>
-                <DialogTitle>Paper Sample Formats</DialogTitle>
-                <DialogDescription>
-                    Visual examples of different paper types.
-                </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="flex-grow">
-                <div className="pr-6 space-y-4">
-                    {isLoading ? (
-                        <p>Loading samples...</p>
-                    ) : paperSamples.length === 0 ? (
-                        <p className="text-center text-muted-foreground py-8">No samples available.</p>
-                    ) : (
-                        paperSamples.map(sample => (
-                            <Card key={sample.id}>
-                                <CardHeader>
-                                    <CardTitle>{sample.name}</CardTitle>
-                                    <CardDescription>{sample.description}</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <Carousel>
-                                        <CarouselContent>
-                                            {sample.imageUrls.map((url, i) => (
-                                                <CarouselItem key={i}>
-                                                    <div className="relative aspect-video">
-                                                        <Image src={url} alt={`${sample.name} ${i+1}`} fill className="object-contain rounded-md" />
-                                                    </div>
-                                                </CarouselItem>
-                                            ))}
-                                        </CarouselContent>
-                                        {sample.imageUrls.length > 1 && (
-                                            <>
-                                            <CarouselPrevious />
-                                            <CarouselNext />
-                                            </>
-                                        )}
-                                    </Carousel>
-                                </CardContent>
-                            </Card>
-                        ))
-                    )}
-                </div>
-            </ScrollArea>
-            <DialogFooter>
-                <DialogClose asChild>
-                    <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
-                </DialogClose>
-            </DialogFooter>
-        </DialogContent>
-    </Dialog>
-);
 
 export default function XeroxPageClient() {
   const { user } = useAuth();
@@ -619,12 +454,6 @@ export default function XeroxPageClient() {
         sessionStorage.removeItem('xeroxDocuments');
     }
   }, [documents]);
-
-  useEffect(() => {
-    if (searchParams.get('upload') === 'true' && fileInputRef.current) {
-        handleUploadClick();
-    }
-  }, [searchParams]);
 
   const updateDocumentState = useCallback((id: number, updates: Partial<DocumentState>) => {
     setDocuments(prev =>
@@ -1166,4 +995,136 @@ export default function XeroxPageClient() {
         )}
     </div>
   );
+}
+
+function PriceListDialog({ isLoading, error, services }: { isLoading: boolean, error: string | null, services: XeroxService[] }) {
+    return (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95">
+              <ListOrdered className="mr-2 h-4 w-4" /> View Price List
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>Xerox &amp; Printing Price List</DialogTitle>
+              <DialogDescription>
+                Prices for various printing and finishing services.
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-grow pr-4">
+              {error ? (
+                <p className="text-center text-destructive">{error}</p>
+              ) : isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : services.length === 0 ? (
+                <p className="py-8 text-center text-muted-foreground">
+                  No printing services are available at the moment.
+                </p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Service</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {services.map((service) => {
+                      const hasDiscount = service.discountPrice != null && service.discountPrice < service.price;
+                      return (
+                        <TableRow key={service.id}>
+                          <TableCell className="font-medium">
+                            <p>{service.name}</p>
+                            {service.unit && <p className="text-xs text-muted-foreground">{service.unit}</p>}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {hasDiscount ? (
+                              <div className="flex flex-col items-end">
+                                <span className="text-base font-bold">Rs {service.discountPrice?.toFixed(2)}</span>
+                                <span className="text-xs text-muted-foreground line-through">Rs {service.price.toFixed(2)}</span>
+                              </div>
+                            ) : (
+                              <span className="text-base font-bold">Rs {service.price.toFixed(2)}</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </ScrollArea>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+    );
+}
+
+function PaperSamplesDialog({ isLoading, paperSamples }: { isLoading: boolean, paperSamples: PaperSample[] }) {
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95"><Images className="mr-2 h-4 w-4"/> View Formats</Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Paper Sample Formats</DialogTitle>
+                    <DialogDescription>
+                        Visual examples of different paper types.
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="flex-grow">
+                    <div className="pr-6 space-y-4">
+                        {isLoading ? (
+                            <p>Loading samples...</p>
+                        ) : paperSamples.length === 0 ? (
+                            <p className="text-center text-muted-foreground py-8">No samples available.</p>
+                        ) : (
+                            paperSamples.map(sample => (
+                                <Card key={sample.id}>
+                                    <CardHeader>
+                                        <CardTitle>{sample.name}</CardTitle>
+                                        <CardDescription>{sample.description}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Carousel>
+                                            <CarouselContent>
+                                                {sample.imageUrls.map((url, i) => (
+                                                    <CarouselItem key={i}>
+                                                        <div className="relative aspect-video">
+                                                            <Image src={url} alt={`${sample.name} ${i+1}`} fill className="object-contain rounded-md" />
+                                                        </div>
+                                                    </CarouselItem>
+                                                ))}
+                                            </CarouselContent>
+                                            {sample.imageUrls.length > 1 && (
+                                                <>
+                                                <CarouselPrevious />
+                                                <CarouselNext />
+                                                </>
+                                            )}
+                                        </Carousel>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        )}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 }

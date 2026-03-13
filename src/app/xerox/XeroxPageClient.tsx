@@ -395,7 +395,7 @@ export default function XeroxPageClient() {
         if (doc.id !== docId) return doc;
         
         const newDoc = { ...doc, fileDetails: { ...doc.fileDetails!, pages } };
-        const currentPaperDetails = paperTypes.find(p => p.id === newDoc.selectedPaperType);
+        const currentPaperDetails = paperTypes.find(p => p.id === newDoc.selectedPaperType) || newDoc.currentPaperDetails;
 
         if (pages === 1 && currentPaperDetails?.formatTypeIds?.includes('front')) {
             newDoc.selectedFormatType = 'front';
@@ -405,29 +405,42 @@ export default function XeroxPageClient() {
   }, [paperTypes]);
 
   const handlePaperTypeChange = useCallback((docId: number, newPaperTypeId: string) => {
-    setDocuments(prevDocs => prevDocs.map(doc => {
-      if (doc.id !== docId || doc.selectedPaperType === newPaperTypeId) return doc;
-  
-      const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
-      if (!newPaperDetails) return doc;
-  
-      const newDoc = {
-        ...doc,
-        selectedPaperType: newPaperTypeId,
-        currentPaperDetails: newPaperDetails,
-        selectedColorOption: newPaperDetails.colorOptionIds?.[0] || '',
-        selectedFormatType: newPaperDetails.formatTypeIds?.[0] || '',
-        selectedPrintRatio: newPaperDetails.printRatioIds?.[0] || '',
-        selectedBindingType: 'none',
-        selectedLaminationType: 'none',
-      };
-      
-      if (doc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
-        newDoc.selectedFormatType = 'front';
-      }
-      
-      return newDoc;
-    }));
+    setDocuments(prevDocs => 
+        prevDocs.map(doc => {
+            if (doc.id !== docId || doc.selectedPaperType === newPaperTypeId) return doc;
+            
+            const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
+            if (!newPaperDetails) return doc;
+            
+            const newDoc: DocumentState = {
+                ...doc,
+                selectedPaperType: newPaperTypeId,
+                currentPaperDetails: newPaperDetails,
+            };
+            
+            if (!newPaperDetails.colorOptionIds?.includes(doc.selectedColorOption)) {
+                newDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
+            }
+            
+            if (doc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
+                newDoc.selectedFormatType = 'front';
+            } else if (!newPaperDetails.formatTypeIds?.includes(doc.selectedFormatType)) {
+                newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
+            }
+
+            if (!newPaperDetails.printRatioIds?.includes(doc.selectedPrintRatio)) {
+                newDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
+            }
+            if (!newPaperDetails.bindingTypeIds?.includes(doc.selectedBindingType)) {
+                newDoc.selectedBindingType = 'none';
+            }
+            if (!newPaperDetails.laminationTypeIds?.includes(doc.selectedLaminationType)) {
+                newDoc.selectedLaminationType = 'none';
+            }
+            
+            return newDoc;
+        })
+    );
   }, [paperTypes]);
 
   const getPageCount = async (file: File): Promise<number | undefined> => {
@@ -543,7 +556,7 @@ export default function XeroxPageClient() {
     result.finalPrice = singleCopyPrice * doc.quantity;
 
     return result;
-}, [allOptions.bindingTypes, allOptions.laminationTypes, paperTypes]);
+}, [allOptions.bindingTypes, allOptions.laminationTypes]);
 
   const documentPrices = useMemo(() => {
     return documents.map(doc => calculateDocumentPrice(doc));
@@ -688,16 +701,8 @@ export default function XeroxPageClient() {
             });
             return newStatus;
         });
-
-        setTimeout(() => {
-            storeJobsAndRedirect();
-        }, 100);
-    }, [documents, storeJobsAndRedirect]);
+    }, [documents]);
     
-    const handleCheckout = async () => {
-        setIsUploading(true);
-    };
-
     const startUploads = useCallback(async () => {
         const initialStatuses: Record<number, UploadStatus> = {};
         documents.forEach(doc => {
@@ -712,8 +717,12 @@ export default function XeroxPageClient() {
             console.error("An error occurred during the upload batch.", error);
         }
     }, [documents, uploadSingleDocument]);
-
     
+    const handleCheckout = () => {
+        setIsUploading(true);
+        startUploads();
+    };
+
     const handleRetry = (docId: number) => {
         const docToRetry = documents.find(d => d.id === docId);
         if (docToRetry) {
@@ -740,11 +749,6 @@ export default function XeroxPageClient() {
 
         const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
-
-        useEffect(() => {
-            startUploads();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        }, []);
 
         useEffect(() => {
             let timer: NodeJS.Timeout;

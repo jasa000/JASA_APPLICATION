@@ -8,10 +8,6 @@ const withPWA = require("next-pwa")({
 });
 
 const nextConfig = {
-  /* Suppress Turbopack check error for Next.js 16+ with custom webpack plugins */
-  experimental: {
-    turbopack: {},
-  },
   devIndicators: {
     allowedDevOrigins: [
       "https://*.cloudworkstations.dev",

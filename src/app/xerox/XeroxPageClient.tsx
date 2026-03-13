@@ -336,9 +336,9 @@ export default function XeroxPageClient() {
         setPaperSamples(fetchedPaperSamples);
         setOrderSettings(fetchedOrderSettings);
 
-        const restoredDocs = sessionStorage.getItem('xeroxDocuments');
-        if (restoredDocs) {
-            try {
+        try {
+            const restoredDocs = sessionStorage.getItem('xeroxDocuments');
+            if (restoredDocs) {
                 const parsedDocs: DocumentState[] = JSON.parse(restoredDocs);
                 if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
                     const hydratedDocs = parsedDocs.map(doc => ({
@@ -348,10 +348,10 @@ export default function XeroxPageClient() {
                     setDocuments(hydratedDocs);
                     nextId.current = Math.max(...hydratedDocs.map(d => d.id)) + 1;
                 }
-            } catch (e) {
-                console.error("Failed to parse session storage", e);
-                sessionStorage.removeItem('xeroxDocuments');
             }
+        } catch (e) {
+            console.error("Failed to parse session storage, clearing it.", e);
+            sessionStorage.removeItem('xeroxDocuments');
         }
         
       } catch (err) {
@@ -386,31 +386,30 @@ export default function XeroxPageClient() {
   const updateDocumentState = useCallback((id: number, updates: Partial<DocumentState>) => {
     setDocuments(prev =>
       prev.map(doc => {
-        if (doc.id === id) {
-          const updatedDoc = { ...doc, ...updates };
-          
-          // If paper type is changed, find new details and reset dependent options
-          if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
-              const newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
-              updatedDoc.currentPaperDetails = newPaperDetails;
-              if (newPaperDetails) {
+        if (doc.id !== id) return doc;
+
+        const updatedDoc = { ...doc, ...updates };
+        let newPaperDetails = updatedDoc.currentPaperDetails;
+
+        // If paper type is changed, we need to reset dependent options.
+        if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
+            newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
+            updatedDoc.currentPaperDetails = newPaperDetails;
+            if (newPaperDetails) {
                 updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
                 updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
                 updatedDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
                 updatedDoc.selectedBindingType = 'none';
                 updatedDoc.selectedLaminationType = 'none';
-              }
-          }
-
-          // If page count is determined or paper type has changed, enforce single-page format rule.
-          const needsFormatCheck = 'fileDetails' in updates || 'selectedPaperType' in updates;
-          if (needsFormatCheck && updatedDoc.fileDetails?.pages === 1) {
-            updatedDoc.selectedFormatType = 'front';
-          }
-          
-          return updatedDoc;
+            }
         }
-        return doc;
+        
+        // After all other updates, enforce the single-page format rule.
+        if (updatedDoc.fileDetails?.pages === 1 && newPaperDetails?.formatTypeIds?.includes('front')) {
+            updatedDoc.selectedFormatType = 'front';
+        }
+
+        return updatedDoc;
       })
     );
   }, [paperTypes]);
@@ -728,15 +727,13 @@ export default function XeroxPageClient() {
             if (isUploading) {
                 startUploads();
                 const uploadTimeout = setTimeout(() => {
-                    const stillProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
-                    if (stillProcessing) {
+                    if (isProcessing) {
                         setShowSkipPrompt(true);
                     }
                 }, 300000); // 5 minutes
 
                 return () => clearTimeout(uploadTimeout);
             }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [isUploading]);
 
         useEffect(() => {

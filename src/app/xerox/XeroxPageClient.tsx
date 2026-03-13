@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { getXeroxServices, getXeroxOptions, getPaperSamples, getOrderSettings, updateOrderWithDocumentUrl } from "@/lib/data";
+import { getXeroxServices, getXeroxOptions, getPaperSamples, getOrderSettings } from "@/lib/data";
 import type { XeroxService, XeroxOption, PaperSample, OrderSettings, XeroxDocument as StoredXeroxJob, StoredXeroxJob as _StoredXeroxJob, DeliveryChargeRule } from "@/lib/types";
 import { HARDCODED_XEROX_OPTIONS } from "@/lib/xerox-options";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -337,14 +337,19 @@ export default function XeroxPageClient() {
 
         const restoredDocs = sessionStorage.getItem('xeroxDocuments');
         if (restoredDocs) {
-            const parsedDocs: DocumentState[] = JSON.parse(restoredDocs);
-            if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
-                const hydratedDocs = parsedDocs.map(doc => ({
-                    ...doc,
-                    file: new File([], doc.fileDetails?.name || 'restored-file', { type: doc.fileDetails?.type }),
-                }));
-                setDocuments(hydratedDocs);
-                nextId.current = Math.max(...hydratedDocs.map(d => d.id)) + 1;
+            try {
+                const parsedDocs: DocumentState[] = JSON.parse(restoredDocs);
+                if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
+                    const hydratedDocs = parsedDocs.map(doc => ({
+                        ...doc,
+                        file: new File([], doc.fileDetails?.name || 'restored-file', { type: doc.fileDetails?.type }),
+                    }));
+                    setDocuments(hydratedDocs);
+                    nextId.current = Math.max(...hydratedDocs.map(d => d.id)) + 1;
+                }
+            } catch (e) {
+                console.error("Failed to parse session storage", e);
+                sessionStorage.removeItem('xeroxDocuments');
             }
         }
         
@@ -361,7 +366,11 @@ export default function XeroxPageClient() {
 
   useEffect(() => {
     if (documents.length > 0) {
-        sessionStorage.setItem('xeroxDocuments', JSON.stringify(documents));
+        try {
+            sessionStorage.setItem('xeroxDocuments', JSON.stringify(documents));
+        } catch (e) {
+            console.error("Could not save to session storage", e)
+        }
     } else {
         sessionStorage.removeItem('xeroxDocuments');
     }
@@ -379,19 +388,24 @@ export default function XeroxPageClient() {
         if (doc.id === id) {
           const updatedDoc = { ...doc, ...updates };
           
-          const newPaperDetails = 'selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType 
-              ? paperTypes.find(pt => pt.id === updates.selectedPaperType) || null
-              : doc.currentPaperDetails;
-
+          let newPaperDetails = doc.currentPaperDetails;
+          if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
+              newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
+          }
           updatedDoc.currentPaperDetails = newPaperDetails;
           
           if (newPaperDetails) {
             if (!newPaperDetails.colorOptionIds?.includes(updatedDoc.selectedColorOption)) updatedDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
             
-            if (updatedDoc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
-                updatedDoc.selectedFormatType = 'front';
-            } else if (!newPaperDetails.formatTypeIds?.includes(updatedDoc.selectedFormatType)) {
-              updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
+            const formatTypeStillValid = newPaperDetails.formatTypeIds?.includes(updatedDoc.selectedFormatType);
+            const isSinglePage = updatedDoc.fileDetails?.pages === 1;
+
+            if (isSinglePage) {
+                if (newPaperDetails.formatTypeIds?.includes('front') && updatedDoc.selectedFormatType !== 'front') {
+                    updatedDoc.selectedFormatType = 'front';
+                }
+            } else if (!formatTypeStillValid) {
+                 updatedDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
             }
 
             if (!newPaperDetails.printRatioIds?.includes(updatedDoc.selectedPrintRatio)) updatedDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
@@ -688,11 +702,6 @@ export default function XeroxPageClient() {
         }
     }, [documents, uploadSingleDocument]);
 
-    useEffect(() => {
-      if (isUploading) {
-        startUploads();
-      }
-    }, [isUploading, startUploads]);
     
     const handleRetry = (docId: number) => {
         const docToRetry = documents.find(d => d.id === docId);
@@ -715,35 +724,31 @@ export default function XeroxPageClient() {
     };
 
     const UploadProgressDialog = () => {
-        const [countdown, setCountdown] = useState(180); // 3 minutes
         const [showSkipPrompt, setShowSkipPrompt] = useState(false);
         const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
 
         useEffect(() => {
             if (isUploading) {
-                const timer = setInterval(() => {
-                    setCountdown(prev => {
-                        if (prev <= 1) {
-                            clearInterval(timer);
-                            if(isProcessing) {
-                                handleSkipAllAndProceed();
-                            }
-                            return 0;
-                        }
-                        return prev - 1;
-                    });
-                }, 1000);
+                startUploads();
+                
+                const timer = setTimeout(() => {
+                    // Re-check isProcessing inside the timeout to get the latest state
+                    const stillProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
+                    if (stillProcessing) {
+                        setShowSkipPrompt(true);
+                    }
+                }, 300000); // 5 minutes
 
-                return () => clearInterval(timer);
+                return () => clearTimeout(timer);
             }
-        }, [isUploading, isProcessing]);
+        }, [isUploading]);
 
         useEffect(() => {
-            if (!isProcessing && isUploading) {
+            if (isUploading && !isProcessing && Object.keys(uploadStatus).length > 0) {
                 storeJobsAndRedirect();
             }
-        }, [isProcessing, isUploading]);
+        }, [isUploading, isProcessing, uploadStatus]);
         
         return (
             <Dialog open={isUploading} onOpenChange={setIsUploading}>
@@ -757,18 +762,8 @@ export default function XeroxPageClient() {
                             Your files are being uploaded. You can skip this and upload any remaining files later from your Order Details page.
                         </DialogDescription>
                     </DialogHeader>
-                    
-                    <div className="flex items-center justify-between py-2 border-y">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-4 w-4" />
-                            <span>Time Remaining:</span>
-                        </div>
-                        <div className="text-sm font-semibold text-primary animate-pulse">
-                            {formatTime(countdown)}
-                        </div>
-                    </div>
 
-                    <ScrollArea className="flex-grow pr-4">
+                    <ScrollArea className="flex-grow pr-4 py-4 border-y">
                         <div className="space-y-4">
                             {documents.map(doc => {
                                 const status = uploadStatus[doc.id];
@@ -799,13 +794,13 @@ export default function XeroxPageClient() {
                             <p className="font-semibold text-yellow-700 dark:text-yellow-300">Upload is taking a while.</p>
                             <p className="text-sm text-muted-foreground">Do you want to skip remaining uploads and proceed?</p>
                             <div className="mt-2 flex justify-center gap-2">
-                                <Button size="sm" variant="secondary" onClick={() => { setCountdown(300); setShowSkipPrompt(false); }}>Keep Waiting</Button>
+                                <Button size="sm" variant="secondary" onClick={() => { setShowSkipPrompt(false); }}>Keep Waiting</Button>
                                 <Button size="sm" variant="destructive" onClick={handleSkipAllAndProceed}>Skip & Proceed</Button>
                             </div>
                         </div>
                     )}
 
-                    <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2 pt-4 border-t">
+                    <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2 pt-4">
                           {hasErrors && (
                             <Button variant="outline" className="w-full" onClick={() => documents.forEach(doc => {
                                 if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);

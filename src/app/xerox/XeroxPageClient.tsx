@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -394,38 +395,38 @@ export default function XeroxPageClient() {
         if (doc.id !== docId) return doc;
         
         const newDoc = { ...doc, fileDetails: { ...doc.fileDetails!, pages } };
-        // If only 1 page, force 'front' if available
-        if (pages === 1 && doc.currentPaperDetails?.formatTypeIds?.includes('front')) {
+        const currentPaperDetails = paperTypes.find(p => p.id === newDoc.selectedPaperType);
+
+        if (pages === 1 && currentPaperDetails?.formatTypeIds?.includes('front')) {
             newDoc.selectedFormatType = 'front';
         }
         return newDoc;
     }));
-  }, []); 
+  }, [paperTypes]);
 
   const handlePaperTypeChange = useCallback((docId: number, newPaperTypeId: string) => {
     setDocuments(prevDocs => prevDocs.map(doc => {
-        if (doc.id !== docId) return doc;
-
-        const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
-        if (!newPaperDetails) return doc;
-
-        const newDoc: DocumentState = {
-            ...doc,
-            selectedPaperType: newPaperTypeId,
-            currentPaperDetails: newPaperDetails,
-            selectedColorOption: newPaperDetails.colorOptionIds?.[0] || '',
-            selectedFormatType: newPaperDetails.formatTypeIds?.[0] || '',
-            selectedPrintRatio: newPaperDetails.printRatioIds?.[0] || '',
-            selectedBindingType: 'none',
-            selectedLaminationType: 'none',
-        };
-        
-        // Also check single page rule
-        if (doc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
-            newDoc.selectedFormatType = 'front';
-        }
-        
-        return newDoc;
+      if (doc.id !== docId || doc.selectedPaperType === newPaperTypeId) return doc;
+  
+      const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
+      if (!newPaperDetails) return doc;
+  
+      const newDoc = {
+        ...doc,
+        selectedPaperType: newPaperTypeId,
+        currentPaperDetails: newPaperDetails,
+        selectedColorOption: newPaperDetails.colorOptionIds?.[0] || '',
+        selectedFormatType: newPaperDetails.formatTypeIds?.[0] || '',
+        selectedPrintRatio: newPaperDetails.printRatioIds?.[0] || '',
+        selectedBindingType: 'none',
+        selectedLaminationType: 'none',
+      };
+      
+      if (doc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
+        newDoc.selectedFormatType = 'front';
+      }
+      
+      return newDoc;
     }));
   }, [paperTypes]);
 
@@ -741,10 +742,9 @@ export default function XeroxPageClient() {
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
 
         useEffect(() => {
-            if (isUploading) {
-                startUploads();
-            }
-        }, [isUploading]);
+            startUploads();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, []);
 
         useEffect(() => {
             let timer: NodeJS.Timeout;
@@ -1143,5 +1143,3 @@ export default function XeroxPageClient() {
     </div>
   );
 }
-
-    

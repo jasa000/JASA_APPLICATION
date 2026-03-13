@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -123,11 +122,12 @@ const formatTime = (seconds: number) => {
 };
 
 
-const DocumentCard = ({ document, index, removeDocument, updateDocumentState, paperTypes, allOptions, documentPrices, isLoading }: { 
+const DocumentCard = ({ document, index, removeDocument, updateDocumentState, handlePaperTypeChange, paperTypes, allOptions, documentPrices, isLoading }: { 
     document: DocumentState, 
     index: number, 
     removeDocument: (id: number) => void, 
     updateDocumentState: (id: number, updates: Partial<DocumentState>) => void,
+    handlePaperTypeChange: (docId: number, newPaperTypeId: string) => void,
     paperTypes: XeroxOption[],
     allOptions: { bindingTypes: XeroxOption[], laminationTypes: XeroxOption[] },
     documentPrices: DocumentPriceDetails[],
@@ -220,7 +220,7 @@ const DocumentCard = ({ document, index, removeDocument, updateDocumentState, pa
                     <div className="grid grid-cols-2 gap-4">
                         <div className="flex flex-col">
                             <Label className="text-xs mb-1">Paper Type</Label>
-                            <Select value={document.selectedPaperType} onValueChange={(v) => updateDocumentState(document.id, {selectedPaperType: v})}>
+                            <Select value={document.selectedPaperType} onValueChange={(v) => handlePaperTypeChange(document.id, v)}>
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {paperTypes.map(pt => <SelectItem key={pt.id} value={pt.id}>{pt.name}</SelectItem>)}
@@ -385,39 +385,35 @@ export default function XeroxPageClient() {
 
   const updateDocumentState = useCallback((id: number, updates: Partial<DocumentState>) => {
     setDocuments(prev =>
-      prev.map(doc => {
-        if (doc.id !== id) return doc;
-        
-        const newDoc = { ...doc, ...updates };
+      prev.map(doc => (doc.id === id ? { ...doc, ...updates } : doc))
+    );
+  }, []);
 
-        // A: Paper type changed. This is a major change that resets dependencies.
-        if ('selectedPaperType' in updates && updates.selectedPaperType !== doc.selectedPaperType) {
-            const newPaperDetails = paperTypes.find(pt => pt.id === updates.selectedPaperType) || null;
-            newDoc.currentPaperDetails = newPaperDetails;
+  const handlePaperTypeChange = useCallback((docId: number, newPaperTypeId: string) => {
+    setDocuments(prev => prev.map(doc => {
+        if (doc.id !== docId) return doc;
 
-            if (newPaperDetails) {
-                newDoc.selectedColorOption = newPaperDetails.colorOptionIds?.[0] || '';
-                newDoc.selectedPrintRatio = newPaperDetails.printRatioIds?.[0] || '';
-                newDoc.selectedBindingType = 'none';
-                newDoc.selectedLaminationType = 'none';
-                
-                // Reset format type based on page count
-                if (newDoc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
-                    newDoc.selectedFormatType = 'front';
-                } else {
-                    newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
-                }
-            }
-        }
+        const newPaperDetails = paperTypes.find(pt => pt.id === newPaperTypeId) || null;
+        if (!newPaperDetails) return doc; // Should not happen if ID is from the list
 
-        // B: Page count was just determined.
-        if ('fileDetails' in updates && doc.fileDetails?.pages === undefined && updates.fileDetails?.pages === 1) {
+        const newDoc: DocumentState = {
+            ...doc,
+            selectedPaperType: newPaperTypeId,
+            currentPaperDetails: newPaperDetails,
+            selectedColorOption: newPaperDetails.colorOptionIds?.[0] || '',
+            selectedPrintRatio: newPaperDetails.printRatioIds?.[0] || '',
+            selectedBindingType: 'none',
+            selectedLaminationType: 'none',
+        };
+
+        if (doc.fileDetails?.pages === 1 && newPaperDetails.formatTypeIds?.includes('front')) {
             newDoc.selectedFormatType = 'front';
+        } else {
+            newDoc.selectedFormatType = newPaperDetails.formatTypeIds?.[0] || '';
         }
         
         return newDoc;
-      })
-    );
+    }));
   }, [paperTypes]);
 
   const getPageCount = async (file: File): Promise<number | undefined> => {
@@ -466,7 +462,11 @@ export default function XeroxPageClient() {
 
     const pages = await getPageCount(file);
     if (pages !== undefined) {
-      updateDocumentState(newDocId, { fileDetails: { ...initialDocumentState.fileDetails!, pages } });
+      const updates: Partial<DocumentState> = { fileDetails: { ...initialDocumentState.fileDetails!, pages } };
+      if (pages === 1) {
+          updates.selectedFormatType = 'front';
+      }
+      updateDocumentState(newDocId, updates);
     } else {
       removeDocument(newDocId);
     }
@@ -533,7 +533,7 @@ export default function XeroxPageClient() {
     result.finalPrice = singleCopyPrice * doc.quantity;
 
     return result;
-}, [allOptions.bindingTypes, allOptions.laminationTypes, paperTypes]);
+}, [allOptions.bindingTypes, allOptions.laminationTypes]);
 
   const documentPrices = useMemo(() => {
     return documents.map(doc => calculateDocumentPrice(doc));
@@ -726,19 +726,30 @@ export default function XeroxPageClient() {
 
     const UploadProgressDialog = () => {
         const [showSkipPrompt, setShowSkipPrompt] = useState(false);
+        const [countdown, setCountdown] = useState(300);
+
         const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
         const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
 
         useEffect(() => {
             if (isUploading) {
                 startUploads();
-                const uploadTimeout = setTimeout(() => {
-                    if (isProcessing) {
-                        setShowSkipPrompt(true);
-                    }
-                }, 300000); // 5 minutes
+            }
+        }, [isUploading]);
 
-                return () => clearTimeout(uploadTimeout);
+        useEffect(() => {
+            if (isUploading && isProcessing) {
+                const timer = setInterval(() => {
+                    setCountdown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(timer);
+                            setShowSkipPrompt(true);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+                return () => clearInterval(timer);
             }
         }, [isUploading, isProcessing]);
 
@@ -797,6 +808,12 @@ export default function XeroxPageClient() {
                             </div>
                         </div>
                     )}
+                    
+                     {!showSkipPrompt && isProcessing && (
+                         <div className="text-center text-sm text-muted-foreground">
+                            <p>Time remaining: {formatTime(countdown)}</p>
+                        </div>
+                     )}
 
                     <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2 pt-4">
                           {hasErrors && (
@@ -1000,6 +1017,7 @@ export default function XeroxPageClient() {
                 index={index} 
                 removeDocument={removeDocument} 
                 updateDocumentState={updateDocumentState}
+                handlePaperTypeChange={handlePaperTypeChange}
                 paperTypes={paperTypes}
                 allOptions={allOptions}
                 documentPrices={documentPrices}
@@ -1115,6 +1133,3 @@ export default function XeroxPageClient() {
     </div>
   );
 }
-
-
-

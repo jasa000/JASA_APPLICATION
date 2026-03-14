@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ExternalLink, Cloud, AlertCircle, X, RefreshCw, FileText, Image as ImageIcon } from "lucide-react";
+import { Trash2, ExternalLink, Cloud, AlertCircle, X, RefreshCw, FileText, Image as ImageIcon, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";

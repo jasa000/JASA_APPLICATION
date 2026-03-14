@@ -38,12 +38,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, RefreshCw, Filter, Search, CheckCircle, XCircle, AlertTriangle, Calendar, Info, Clock, Eraser, Trash } from "lucide-react";
+import { Trash2, RefreshCw, Filter, Search, CheckCircle, XCircle, AlertTriangle, Calendar, Info, Clock, Eraser, Trash, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Link from "next/link";
 
 export default function ManageAllOrdersPage() {
   const { user, loading: authLoading } = useAuth();
@@ -144,13 +145,14 @@ export default function ManageAllOrdersPage() {
       if (!isCorrectStatus) return false;
       
       const orderDate = order.createdAt.toDate();
-      return differenceInDays(new Date(), orderDate) >= days;
+      // If days is 0, we delete all regardless of date
+      return days === 0 ? true : differenceInDays(new Date(), orderDate) >= days;
     });
 
     if (ordersToDelete.length === 0) {
       toast({
         title: "Nothing to Clean Up",
-        description: `No ${type} orders older than ${days} days found.`,
+        description: `No ${type} orders matching criteria found.`,
       });
       return;
     }
@@ -185,9 +187,9 @@ export default function ManageAllOrdersPage() {
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
-      case "Pending Confirmation": return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending</Badge>;
-      case "Processing": return <Badge variant="outline" className="bg-blue-100 text-blue-800">Processing</Badge>;
-      case "Delivered": case "Replacement Completed": case "Return Completed": return <Badge variant="outline" className="bg-green-100 text-green-800">Completed</Badge>;
+      case "Pending Confirmation": return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">Pending</Badge>;
+      case "Processing": return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">Processing</Badge>;
+      case "Delivered": case "Replacement Completed": case "Return Completed": return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300">Completed</Badge>;
       case "Cancelled": case "Rejected": case "Return Rejected": return <Badge variant="destructive">Failed</Badge>;
       default: return <Badge variant="secondary">{status}</Badge>;
     }
@@ -217,7 +219,7 @@ export default function ManageAllOrdersPage() {
             Order Maintenance
           </h1>
           <p className="mt-2 text-muted-foreground">
-            View all orders and manage Firestore storage by deleting old completed records.
+            View all orders and manage Firestore storage by deleting old records.
           </p>
         </div>
         <Button variant="outline" onClick={fetchData} className="flex-shrink-0">
@@ -234,7 +236,7 @@ export default function ManageAllOrdersPage() {
               <CheckCircle className="h-4 w-4 text-green-600" /> Cleanup Delivered
             </CardTitle>
           </CardHeader>
-          <CardFooter className="p-4 pt-0 gap-2">
+          <CardFooter className="p-4 pt-0 flex-wrap gap-2">
             <Button size="sm" variant="outline" className="flex-1 bg-white" onClick={() => cleanupOrders('delivered', 3)}>
               &gt; 3 Days
             </Button>
@@ -250,12 +252,15 @@ export default function ManageAllOrdersPage() {
               <XCircle className="h-4 w-4 text-red-600" /> Cleanup Cancelled
             </CardTitle>
           </CardHeader>
-          <CardFooter className="p-4 pt-0 gap-2">
+          <CardFooter className="p-4 pt-0 flex-wrap gap-2">
             <Button size="sm" variant="outline" className="flex-1 bg-white" onClick={() => cleanupOrders('cancelled', 3)}>
               &gt; 3 Days
             </Button>
             <Button size="sm" variant="outline" className="flex-1 bg-white" onClick={() => cleanupOrders('cancelled', 7)}>
               &gt; 7 Days
+            </Button>
+            <Button size="sm" variant="destructive" className="w-full mt-1" onClick={() => cleanupOrders('cancelled', 0)}>
+              All Cancelled
             </Button>
           </CardFooter>
         </Card>
@@ -378,7 +383,7 @@ export default function ManageAllOrdersPage() {
                         </TableCell>
                         <TableCell>{getStatusBadge(order.status)}</TableCell>
                         <TableCell className="font-bold">
-                          {(order.price * order.quantity + order.deliveryCharge).toFixed(2)}
+                          {((order.price * order.quantity) + order.deliveryCharge).toFixed(2)}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button variant="ghost" size="icon" asChild>

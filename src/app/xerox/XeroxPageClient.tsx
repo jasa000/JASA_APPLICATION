@@ -938,7 +938,7 @@ export default function XeroxPageClient() {
         if (type === 'formatType') return HARDCODED_XEROX_OPTIONS.formatTypes.find(o => o.id === id)?.name || '';
         if (type === 'printRatio') return HARDCODED_XEROX_OPTIONS.printRatios.find(o => o.id === id)?.name || '';
         if (type === 'bindingType') return allOptions.bindingTypes.find(o => o.id === id)?.name || '';
-        if (type === 'laminationType') return allOptions.laminationTypes.find(o => o.id === id)?.name || '';
+        if (type === 'laminationType') return laminationTypes.find(o => o.id === id)?.name || '';
         return '';
     };
 
@@ -965,6 +965,16 @@ export default function XeroxPageClient() {
           <PriceListDialog isLoading={isLoading} error={error} services={services} />
           <PaperSamplesDialog isLoading={isLoading} paperSamples={paperSamples} />
         </div>
+      </div>
+
+      <div className="container mx-auto px-4">
+        <Alert className="mb-6 border-blue-200 bg-blue-50/50 dark:bg-blue-900/20">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertTitle className="text-blue-800 dark:text-blue-300 font-bold">Important File Size Notice</AlertTitle>
+          <AlertDescription className="text-blue-700 dark:text-blue-400 font-semibold">
+            ENSURE FILE SIZE BELOW 50 MB. IF FILE SIZE IS ABOVE 50 MB, THE SHOP OWNER WILL CONTACT YOU TO GET THE FILES.
+          </AlertDescription>
+        </Alert>
       </div>
 
        {documents.length === 0 && !isLoading ? (

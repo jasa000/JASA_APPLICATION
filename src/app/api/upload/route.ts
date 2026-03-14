@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
         // Upload to Cloudinary using upload_large for better reliability with larger files
         // Cloudinary upload_large automatically handles chunks for files > 10MB
-        const uploadResponse = await cloudinary.uploader.upload(tempFilePath, {
+        const uploadResponse = await cloudinary.uploader.upload_large(tempFilePath, {
             folder: "jasa_documents",
             resource_type: resourceType,
             public_id: file.name.replace(/\.[^/.]+$/, ""), // Use original name without extension as base ID

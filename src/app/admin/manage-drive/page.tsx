@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -209,10 +210,10 @@ export default function ManageDocumentsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Database className="text-blue-500" /> Supabase Storage
+            <Database className="text-blue-500" /> Supabase Storage (Xerox)
           </CardTitle>
           <CardDescription>
-            Current storage usage for Xerox documents and linked order files.
+            Current storage usage for Xerox documents. Images are managed in Cloudinary.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -355,75 +356,73 @@ export default function ManageDocumentsPage() {
   }
 
   return (
-    <>
-      <div className="container mx-auto px-4 pt-8 pb-40">
-        <div className="flex items-center justify-between">
-            <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
-            Manage Documents
-            </h1>
-            <Button variant="outline" onClick={fetchData} disabled={isLoading}>
-                <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
-                Refresh
-            </Button>
-        </div>
-        <p className="mt-2 text-muted-foreground">
-          Monitor storage and clean up uploaded files once orders are completed.
-        </p>
-
-        <div className="my-8">
-            {renderUsageCard()}
-        </div>
-
-        <Card>
-            <CardHeader>
-                <CardTitle>Supabase File Explorer</CardTitle>
-                <CardDescription>
-                Files are linked to Firestore orders to help you identify which ones are safe to delete.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="active">Required for Active Orders ({activeFiles.length})</TabsTrigger>
-                    <TabsTrigger value="archived">Cleanup / History</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="active" className="mt-4">
-                      <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-primary flex items-center gap-2">
-                        <Info className="h-4 w-4"/>
-                        <p>These files are needed for orders currently in progress. Do not delete them.</p>
-                      </div>
-                      {renderFilesTable(activeFiles)}
-                  </TabsContent>
-                  <TabsContent value="archived" className="mt-4">
-                    <div className="p-4 rounded-lg border bg-muted/50 mb-4">
-                        <Label className="font-semibold text-base sm:text-lg">Filter by status:</Label>
-                        <RadioGroup value={unusedFilter} onValueChange={(v) => setUnusedFilter(v as any)} className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="unused" id="r-unused" />
-                                <Label htmlFor="r-unused" className="text-sm sm:text-base">Unused (No Link)</Label>
-                            </div>
-                             <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="delivered" id="r-delivered" />
-                                <Label htmlFor="r-delivered" className="text-sm sm:text-base">Delivered</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="cancelled" id="r-cancelled" />
-                                <Label htmlFor="r-cancelled" className="text-sm sm:text-base">Cancelled/Rejected</Label>
-                            </div>
-                        </RadioGroup>
-                    </div>
-                    <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4"/>
-                        <p>Files in this tab are from completed, cancelled, or orphaned uploads. They are safe to delete.</p>
-                    </div>
-                    {renderFilesTable(unusedArchivedFiles, true)}
-                  </TabsContent>
-                </Tabs>
-            </CardContent>
-        </Card>
+    <div className="container mx-auto px-4 pt-8 pb-40">
+      <div className="flex items-center justify-between">
+          <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
+          Manage Xerox Documents
+          </h1>
+          <Button variant="outline" onClick={fetchData} disabled={isLoading}>
+              <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
+              Refresh
+          </Button>
       </div>
-      
-       {activeTab === 'archived' && selectedFiles.length > 0 && (
+      <p className="mt-2 text-muted-foreground">
+        Monitor Supabase storage and clean up uploaded Xerox documents once orders are completed.
+      </p>
+
+      <div className="my-8">
+          {renderUsageCard()}
+      </div>
+
+      <Card>
+          <CardHeader>
+              <CardTitle>Supabase File Explorer</CardTitle>
+              <CardDescription>
+              Xerox files are linked to Firestore orders to help you identify which ones are safe to delete.
+              </CardDescription>
+          </CardHeader>
+          <CardContent>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="active">Required for Active Orders ({activeFiles.length})</TabsTrigger>
+                  <TabsTrigger value="archived">Cleanup / History</TabsTrigger>
+                </TabsList>
+                <TabsContent value="active" className="mt-4">
+                    <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-primary flex items-center gap-2">
+                      <Info className="h-4 w-4"/>
+                      <p>These files are needed for Xerox orders currently in progress. Do not delete them.</p>
+                    </div>
+                    {renderFilesTable(activeFiles)}
+                </TabsContent>
+                <TabsContent value="archived" className="mt-4">
+                  <div className="p-4 rounded-lg border bg-muted/50 mb-4">
+                      <Label className="font-semibold text-base sm:text-lg">Filter by status:</Label>
+                      <RadioGroup value={unusedFilter} onValueChange={(v) => setUnusedFilter(v as any)} className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                          <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="unused" id="r-unused" />
+                              <Label htmlFor="r-unused" className="text-sm sm:text-base">Unused (No Link)</Label>
+                          </div>
+                           <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="delivered" id="r-delivered" />
+                              <Label htmlFor="r-delivered" className="text-sm sm:text-base">Delivered</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="cancelled" id="r-cancelled" />
+                              <Label htmlFor="r-cancelled" className="text-sm sm:text-base">Cancelled/Rejected</Label>
+                          </div>
+                      </RadioGroup>
+                  </div>
+                  <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4"/>
+                      <p>Files in this tab are from completed, cancelled, or orphaned uploads. They are safe to delete.</p>
+                  </div>
+                  {renderFilesTable(unusedArchivedFiles, true)}
+                </TabsContent>
+              </Tabs>
+          </CardContent>
+      </Card>
+
+      {activeTab === 'archived' && selectedFiles.length > 0 && (
         <div className="fixed bottom-16 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t lg:left-[var(--sidebar-width)] transition-[left] duration-200">
           <div className="container mx-auto flex items-center justify-between">
             <p className="font-semibold">{selectedFiles.length} file(s) selected</p>
@@ -456,7 +455,6 @@ export default function ManageDocumentsPage() {
         </div>
       )}
 
-
       <AlertDialog
         open={!!deletingFile}
         onOpenChange={(open) => !open && setDeletingFile(null)}
@@ -479,6 +477,6 @@ export default function ManageDocumentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

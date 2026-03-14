@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -423,7 +424,7 @@ export default function AppSidebar() {
                       <SidebarMenuButton asChild onClick={handleMenuItemClick} isActive={pathname.startsWith('/manage-cloudinary')}>
                           <Link href="/manage-cloudinary">
                               <ImageIcon />
-                              <span>Cloudinary Images</span>
+                              <span>Cloudinary</span>
                           </Link>
                       </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -431,7 +432,7 @@ export default function AppSidebar() {
                       <SidebarMenuButton asChild onClick={handleMenuItemClick} isActive={pathname.startsWith('/admin/manage-drive')}>
                           <Link href="/admin/manage-drive">
                               <Database />
-                              <span>Manage Documents</span>
+                              <span>Manage Xerox Docs</span>
                           </Link>
                       </SidebarMenuButton>
                   </SidebarMenuItem>

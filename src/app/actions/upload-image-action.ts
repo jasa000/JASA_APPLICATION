@@ -1,42 +1,37 @@
+
 'use server';
 
-import { supabaseAdmin } from "@/lib/supabase";
-import { v4 as uuidv4 } from 'uuid';
+import { v2 as cloudinary } from 'cloudinary';
 
+// Configure Cloudinary for non-Xerox images
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
+
+/**
+ * Uploads an image to Cloudinary.
+ * Used for products, banners, and homepage content.
+ */
 export async function uploadImageAction(
   base64Image: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    // Extract format and base64 data
-    const matches = base64Image.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
-      throw new Error('Invalid base64 image format');
+    // Basic validation
+    if (!base64Image.startsWith('data:image')) {
+      throw new Error('Invalid image format. Expected base64 data URI.');
     }
 
-    const extension = matches[1];
-    const buffer = Buffer.from(matches[2], 'base64');
-    const fileName = `${uuidv4()}.${extension}`;
-
-    // Upload to Supabase Storage 'jasa-essentials' bucket
-    const { data, error } = await supabaseAdmin.storage
-      .from('jasa-essentials')
-      .upload(fileName, buffer, {
-        contentType: `image/${extension}`,
-        upsert: false
-      });
-
-    if (error) {
-      throw error;
-    }
-
-    // Get public URL
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from('jasa-essentials')
-      .getPublicUrl(data.path);
+    const result = await cloudinary.uploader.upload(base64Image, {
+      folder: 'jasa_essentials',
+      resource_type: 'image',
+    });
     
-    return { success: true, url: publicUrl };
+    return { success: true, url: result.secure_url };
   } catch (error: any) {
-    console.error('Upload action error:', error.message);
+    console.error('Cloudinary upload error:', error.message);
     return { success: false, error: error.message };
   }
 }

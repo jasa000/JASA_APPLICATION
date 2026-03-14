@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import React, { useState, useRef } from "react";
@@ -34,16 +33,6 @@ export default function DriveUploader({ onUploadSuccess }: DriveUploaderProps) {
       return;
     }
 
-    if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.type === 'application/msword') {
-        toast({
-            variant: "destructive",
-            title: "File Type Not Supported",
-            description: `"${file.name}" is a Word document. Please convert it to a PDF and upload again.`,
-            duration: 7000,
-        });
-        return;
-    }
-
     const fd = new FormData();
     fd.append("file", file);
     setFileName(file.name);
@@ -53,8 +42,8 @@ export default function DriveUploader({ onUploadSuccess }: DriveUploaderProps) {
     // Simulate progress
     setProgress(0);
     const progressInterval = setInterval(() => {
-        setProgress(prev => (prev < 90 ? prev + 10 : prev));
-    }, 500);
+        setProgress(prev => (prev < 90 ? prev + 5 : prev));
+    }, 300);
 
     try {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
@@ -66,6 +55,10 @@ export default function DriveUploader({ onUploadSuccess }: DriveUploaderProps) {
       if (res.ok && data?.url) {
         setLink(data.url);
         if(onUploadSuccess) onUploadSuccess();
+        toast({
+            title: "Upload Successful",
+            description: `"${file.name}" has been uploaded to Cloudinary.`,
+        });
       } else {
         throw new Error(data.error || "An unknown error occurred during upload.");
       }
@@ -79,7 +72,6 @@ export default function DriveUploader({ onUploadSuccess }: DriveUploaderProps) {
       });
     } finally {
       setLoading(false);
-      // Reset input value to allow re-uploading the same file
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -94,7 +86,7 @@ export default function DriveUploader({ onUploadSuccess }: DriveUploaderProps) {
         onChange={handleFileChange}
         disabled={loading}
         className="hidden"
-        id="drive-upload-input"
+        id="cloudinary-upload-input"
         accept="application/pdf,image/*"
       />
       <Button
@@ -107,17 +99,22 @@ export default function DriveUploader({ onUploadSuccess }: DriveUploaderProps) {
         ) : (
           <UploadCloud className="mr-2 h-4 w-4" />
         )}
-        {loading ? `Uploading ${fileName}...` : "Choose File"}
+        {loading ? `Uploading ${fileName}...` : "Upload Document"}
       </Button>
       
-      {loading && <Progress value={progress} />}
+      {loading && (
+        <div className="space-y-1">
+            <Progress value={progress} />
+            <p className="text-center text-[10px] text-muted-foreground">{Math.round(progress)}%</p>
+        </div>
+      )}
       
       {link && (
-        <div className="flex items-center gap-2 text-sm text-green-600">
-          <LinkIcon className="mr-2 h-4 w-4" />
-          <span>Upload complete!</span>
-          <Button variant="link" asChild className="p-0 h-auto">
-            <a href={link} target="_blank" rel="noopener noreferrer">View File</a>
+        <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded-md border border-green-200">
+          <LinkIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate flex-1">Upload complete!</span>
+          <Button variant="link" asChild className="p-0 h-auto text-green-700 font-bold">
+            <a href={link} target="_blank" rel="noopener noreferrer">View</a>
           </Button>
         </div>
       )}

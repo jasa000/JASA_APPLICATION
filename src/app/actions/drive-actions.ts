@@ -1,23 +1,17 @@
 
 'use server';
 
-import { google } from 'googleapis';
+import { v2 as cloudinary } from 'cloudinary';
 import { getAllOrderImageUrls } from '@/lib/data';
-import { Order, OrderStatus } from '@/lib/types';
+import { OrderStatus } from '@/lib/types';
 
-function getDriveClient() {
-  const oauth2Client = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
-
-  oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-  });
-
-  return google.drive({ version: 'v3', auth: oauth2Client });
-}
+// Configure Cloudinary
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 // Helper to format bytes
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -31,34 +25,18 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 export async function getDriveUsageAction() {
   try {
-    const drive = getDriveClient();
-    const response = await drive.about.get({
-      fields: 'storageQuota',
-    });
-    const storageQuota = response.data.storageQuota;
+    const result = await cloudinary.api.usage();
+    const storage = result.storage || { usage: 0, limit: 0 };
     return {
-      limit: Number(storageQuota?.limit) || 0,
-      usage: Number(storageQuota?.usage) || 0,
-      usageInDrive: Number(storageQuota?.usageInDrive) || 0,
+      limit: storage.limit,
+      usage: storage.usage,
+      usageInDrive: storage.usage, // Reusing usage for consistency with UI
     };
   } catch (error: any) {
-    console.error('Error fetching Drive usage:', error);
-    throw new Error('Could not fetch Google Drive usage data. Check server logs and environment variables.');
+    console.error('Error fetching Cloudinary usage:', error);
+    throw new Error('Could not fetch Cloudinary usage data.');
   }
 }
-
-const getFileIdFromUrl = (url: string): string | null => {
-    if (!url) return null;
-    try {
-        const urlObj = new URL(url);
-        if (urlObj.hostname === 'drive.google.com' && urlObj.pathname.startsWith('/uc')) {
-            return urlObj.searchParams.get('id');
-        }
-        return null;
-    } catch (e) {
-        return null;
-    }
-};
 
 const getOrderStatusCategory = (status: OrderStatus): 'Active' | 'Delivered' | 'Cancelled/Rejected' => {
     const activeStatuses: OrderStatus[] = ["Pending Confirmation", "Processing", "Packed", "Shipped", "Out for Delivery", "Return Requested", "Return Approved", "Out for Pickup", "Picked Up", "Replacement Issued"];
@@ -70,34 +48,35 @@ const getOrderStatusCategory = (status: OrderStatus): 'Active' | 'Delivered' | '
 };
 
 export async function getDriveFilesAction(): Promise<{ error?: string; files: any[] }> {
-  // Use the specific folder if configured, otherwise default to root parents
-  const parentId = process.env.GOOGLE_FOLDER_ID || 'root';
-  const query = `trashed=false and '${parentId}' in parents`;
-  
   try {
-    const drive = getDriveClient();
-    const [driveResponse, allOrderImages] = await Promise.all([
-      drive.files.list({
-        q: query,
-        fields: 'files(id, name, size, createdTime, webViewLink)',
-        orderBy: 'createdTime desc',
-        pageSize: 100,
+    // Fetch resources from 'jasa_documents' folder for both raw and image types
+    const [rawResources, imageResources, allOrderImages] = await Promise.all([
+      cloudinary.api.resources({ 
+        type: 'upload', 
+        prefix: 'jasa_documents/', 
+        resource_type: 'raw',
+        max_results: 500 
+      }),
+      cloudinary.api.resources({ 
+        type: 'upload', 
+        prefix: 'jasa_documents/', 
+        resource_type: 'image',
+        max_results: 500 
       }),
       getAllOrderImageUrls()
     ]);
     
-    const fileIdToOrderStatus = new Map<string, OrderStatus>();
+    const urlToOrderStatus = new Map<string, OrderStatus>();
     allOrderImages.forEach(order => {
         if (order.productImage) {
-            const fileId = getFileIdFromUrl(order.productImage);
-            if (fileId) {
-                fileIdToOrderStatus.set(fileId, order.status);
-            }
+            urlToOrderStatus.set(order.productImage, order.status);
         }
     });
 
-    const files = (driveResponse.data.files || []).map((file) => {
-        const orderStatus = file.id ? fileIdToOrderStatus.get(file.id) : undefined;
+    const allResources = [...(rawResources.resources || []), ...(imageResources.resources || [])];
+
+    const files = allResources.map((resource: any) => {
+        const orderStatus = urlToOrderStatus.get(resource.secure_url);
         let statusCategory: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused' | null = null;
         if(orderStatus) {
             statusCategory = getOrderStatusCategory(orderStatus);
@@ -106,41 +85,46 @@ export async function getDriveFilesAction(): Promise<{ error?: string; files: an
         }
         
         return {
-          id: file.id || '',
-          name: file.name || 'Untitled',
-          size: file.size ? formatBytes(Number(file.size)) : 'N/A',
-          createdTime: file.createdTime || new Date().toISOString(),
-          webViewLink: file.webViewLink || '',
-          orderStatus: statusCategory
+          id: resource.public_id,
+          name: resource.filename || resource.public_id.split('/').pop() || 'Untitled',
+          size: resource.bytes ? formatBytes(Number(resource.bytes)) : 'N/A',
+          createdTime: resource.created_at || new Date().toISOString(),
+          webViewLink: resource.secure_url,
+          orderStatus: statusCategory,
+          resourceType: resource.resource_type // image or raw
         }
     });
 
     return { files };
   } catch (error: any) {
-    console.error('Error fetching Drive files:', error);
-    throw new Error('Could not fetch files from Google Drive. Check server logs and environment variables.');
+    console.error('Error fetching Cloudinary files:', error);
+    return { error: 'Could not fetch files from Cloudinary. Check server logs and environment variables.', files: [] };
   }
 }
 
-export async function deleteDriveFileAction(fileId: string) {
+export async function deleteDriveFileAction(publicId: string, resourceType: string = 'raw') {
   try {
-    const drive = getDriveClient();
-    await drive.files.delete({ fileId });
+    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
     return { success: true };
   } catch (error: any) {
-    console.error('Error deleting Drive file:', error);
-    throw new Error('Could not delete file from Google Drive.');
+    console.error('Error deleting Cloudinary file:', error);
+    throw new Error('Could not delete file from Cloudinary.');
   }
 }
 
 export async function deleteDriveFilesAction(fileIds: string[]) {
     try {
-        const drive = getDriveClient();
-        const promises = fileIds.map(fileId => drive.files.delete({ fileId }));
-        await Promise.all(promises);
+        // Note: Cloudinary bulk delete is restricted by resource type. 
+        // For simplicity, we delete them individually here or you'd need separate lists.
+        const results = await Promise.all(fileIds.map(async id => {
+            // We try deleting as both raw and image if type isn't passed, or you can fetch types first
+            // This is safer for a mixed-content folder
+            await cloudinary.uploader.destroy(id, { resource_type: 'raw' });
+            await cloudinary.uploader.destroy(id, { resource_type: 'image' });
+        }));
         return { success: true };
     } catch (error: any) {
-        console.error('Error deleting multiple Drive files:', error);
-        throw new Error('Could not delete all selected files from Google Drive. ' + error.message);
+        console.error('Error deleting multiple Cloudinary files:', error);
+        throw new Error('Could not delete all selected files from Cloudinary. ' + error.message);
     }
 }

@@ -1,10 +1,18 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { getDriveClient } from "@/lib/googleDrive";
+import { v2 as cloudinary } from 'cloudinary';
 import fs from "fs";
 import path from "path";
 import os from "os";
 import { Readable } from "stream";
+
+// Configure Cloudinary
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 export async function POST(req: NextRequest) {
     const formData = await req.formData();
@@ -14,59 +22,40 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const tempFilePath = path.join(os.tmpdir(), file.name);
+    const tempFilePath = path.join(os.tmpdir(), `${Date.now()}-${file.name}`);
 
     try {
-        // Stream the file to a temporary location to avoid loading it all into memory
+        // Stream the file to a temporary location
         const readableStream = file.stream();
         const writeStream = fs.createWriteStream(tempFilePath);
         
-        // Use a promise to wait for the stream to finish writing
         await new Promise((resolve, reject) => {
             Readable.fromWeb(readableStream as any).pipe(writeStream)
                 .on('finish', resolve)
                 .on('error', reject);
         });
 
-        const drive = getDriveClient();
-        
-        const fileMetadata: any = { 
-            name: file.name,
-            parents: process.env.GOOGLE_FOLDER_ID ? [process.env.GOOGLE_FOLDER_ID] : undefined
-        };
+        // Determine resource type based on file extension
+        const isImage = file.type.startsWith('image/');
+        const resourceType = isImage ? 'image' : 'raw';
 
-        const media = {
-            mimeType: file.type,
-            body: fs.createReadStream(tempFilePath),
-        };
-
-        const uploadResponse = await drive.files.create({
-            requestBody: fileMetadata,
-            media: media,
-            fields: "id, webViewLink",
+        // Upload to Cloudinary
+        const uploadResponse = await cloudinary.uploader.upload(tempFilePath, {
+            folder: "jasa_documents",
+            resource_type: resourceType,
+            public_id: file.name.replace(/\.[^/.]+$/, ""), // Use original name without extension as base ID
+            use_filename: true,
+            unique_filename: true,
         });
 
-        const fileId = uploadResponse.data.id;
-        if (!fileId) {
-            throw new Error("File ID not found after upload.");
+        if (!uploadResponse.secure_url) {
+            throw new Error("Cloudinary upload failed to return a URL.");
         }
-
-        // Make file public (anyone with the link can view)
-        await drive.permissions.create({
-            fileId: fileId,
-            requestBody: {
-                role: "reader",
-                type: "anyone",
-            },
-        });
-
-        // Use the direct download URL format
-        const publicUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
         return NextResponse.json({
             success: true,
-            fileId: fileId,
-            url: publicUrl,
+            fileId: uploadResponse.public_id,
+            url: uploadResponse.secure_url,
         }, { status: 200 });
 
     } catch (e: any) {

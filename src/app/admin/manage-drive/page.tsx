@@ -35,11 +35,10 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ExternalLink, HardDrive, AlertCircle, X } from "lucide-react";
+import { Trash2, ExternalLink, Cloud, AlertCircle, X, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -47,19 +46,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
-type DriveFile = {
+type DocumentFile = {
   id: string;
   name: string;
   size: string;
   createdTime: string;
   webViewLink: string;
   orderStatus: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused' | null;
+  resourceType: string;
 };
 
-type DriveUsage = {
+type CloudinaryUsage = {
   limit: number;
   usage: number;
-  usageInDrive: number;
 };
 
 export default function ManageDrivePage() {
@@ -67,10 +66,10 @@ export default function ManageDrivePage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [files, setFiles] = useState<DriveFile[]>([]);
-  const [usage, setUsage] = useState<DriveUsage | null>(null);
+  const [files, setFiles] = useState<DocumentFile[]>([]);
+  const [usage, setUsage] = useState<CloudinaryUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [deletingFile, setDeletingFile] = useState<DriveFile | null>(null);
+  const [deletingFile, setDeletingFile] = useState<DocumentFile | null>(null);
   
   const [activeTab, setActiveTab] = useState("active");
   const [unusedFilter, setUnusedFilter] = useState<'unused' | 'delivered' | 'cancelled'>('unused');
@@ -96,7 +95,7 @@ export default function ManageDrivePage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: `Failed to fetch Google Drive data: ${error.message}`,
+        description: `Failed to fetch Cloudinary data: ${error.message}`,
         duration: 9000,
       });
     } finally {
@@ -127,10 +126,10 @@ export default function ManageDrivePage() {
   const handleDelete = async () => {
     if (!deletingFile) return;
     try {
-      await deleteDriveFileAction(deletingFile.id);
+      await deleteDriveFileAction(deletingFile.id, deletingFile.resourceType);
       toast({
         title: "File Deleted",
-        description: `"${deletingFile.name}" has been removed from Google Drive.`,
+        description: `"${deletingFile.name}" has been removed from Cloudinary.`,
       });
       fetchData(); // Refresh data
       setDeletingFile(null);
@@ -150,7 +149,7 @@ export default function ManageDrivePage() {
       await deleteDriveFilesAction(selectedFiles);
       toast({
         title: `${selectedFiles.length} File(s) Deleted`,
-        description: "The selected files have been removed from Google Drive.",
+        description: "The selected files have been removed from Cloudinary.",
       });
       fetchData(); // Refresh data
     } catch (error: any) {
@@ -210,10 +209,10 @@ export default function ManageDrivePage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <HardDrive /> Google Drive Storage
+            <Cloud className="text-blue-500" /> Cloudinary Storage
           </CardTitle>
           <CardDescription>
-            Your current storage usage across your Google account.
+            Current storage usage for Xerox documents and product images.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -226,15 +225,12 @@ export default function ManageDrivePage() {
               </div>
               <Progress value={usagePercent} className="mt-1 h-2" />
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-                Usage in Drive folder specifically: {formatBytes(usage.usageInDrive)}
-            </p>
         </CardContent>
       </Card>
     );
   };
   
-  const renderStatusBadge = (status: DriveFile['orderStatus']) => {
+  const renderStatusBadge = (status: DocumentFile['orderStatus']) => {
     switch (status) {
         case 'Active':
             return <Badge variant="default">Active Order</Badge>;
@@ -249,7 +245,7 @@ export default function ManageDrivePage() {
     }
 };
 
-  const renderFilesTable = (fileList: DriveFile[], showCheckbox: boolean = false) => {
+  const renderFilesTable = (fileList: DocumentFile[], showCheckbox: boolean = false) => {
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
             setSelectedFiles(fileList.map(f => f.id));
@@ -336,12 +332,12 @@ export default function ManageDrivePage() {
               <TableCell>{new Date(file.createdTime).toLocaleString()}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" size="icon" asChild>
+                  <Button variant="outline" size="icon" asChild title="View File">
                     <a href={file.webViewLink} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
-                  <Button variant="destructive" size="icon" onClick={() => setDeletingFile(file)}>
+                  <Button variant="destructive" size="icon" onClick={() => setDeletingFile(file)} title="Delete File">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -356,11 +352,17 @@ export default function ManageDrivePage() {
   return (
     <>
       <div className="container mx-auto px-4 py-8">
-        <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
-          Manage Google Drive
-        </h1>
+        <div className="flex items-center justify-between">
+            <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
+            Manage Documents
+            </h1>
+            <Button variant="outline" onClick={fetchData} disabled={isLoading}>
+                <RefreshCw className={cn("mr-2 h-4 w-4", isLoading && "animate-spin")} />
+                Refresh
+            </Button>
+        </div>
         <p className="mt-2 text-muted-foreground">
-          View storage usage and manage your uploaded documents based on order status.
+          View storage usage and manage your uploaded Xerox documents on Cloudinary.
         </p>
 
         <div className="my-8">
@@ -369,15 +371,15 @@ export default function ManageDrivePage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Uploaded Files</CardTitle>
+                <CardTitle>Uploaded Documents</CardTitle>
                 <CardDescription>
-                Filter files based on their linked order status to manage storage.
+                Filter files based on their linked order status to manage storage effectively.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="active">Active Files ({activeFiles.length})</TabsTrigger>
+                    <TabsTrigger value="active">Active Orders ({activeFiles.length})</TabsTrigger>
                     <TabsTrigger value="archived">Unused/Archived</TabsTrigger>
                   </TabsList>
                   <TabsContent value="active" className="mt-4">
@@ -431,7 +433,7 @@ export default function ManageDrivePage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete {selectedFiles.length} files?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete the selected files from Google Drive. This action cannot be undone.
+                      This will permanently delete the selected files from Cloudinary. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -455,7 +457,7 @@ export default function ManageDrivePage() {
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the
-              file "{deletingFile?.name}" from your Google Drive.
+              file "{deletingFile?.name}" from Cloudinary.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

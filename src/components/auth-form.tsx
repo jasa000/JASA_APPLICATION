@@ -18,9 +18,12 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   type User,
-  sendEmailVerification
+  sendEmailVerification,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import PasswordStrength from '@/components/password-strength';
 import {
@@ -177,6 +180,45 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
         title: "Sign Up Failed",
         description: error.message,
       });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    setLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      // Check if user exists in Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        // Not an existing user, sign out and show error
+        await signOut(auth);
+        toast({
+          variant: "destructive",
+          title: "Account Not Found",
+          description: "You don't have an account with this Google email. Please register using the 'Sign Up' tab first.",
+        });
+      } else {
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${user.displayName || 'User'}!`,
+        });
+        onSuccess?.();
+      }
+    } catch (error: any) {
+       if (error.code !== 'auth/popup-closed-by-user') {
+         toast({
+          variant: "destructive",
+          title: "Sign-In Failed",
+          description: error.message,
+        });
+       }
     } finally {
       setLoading(false);
     }
@@ -368,6 +410,45 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
                           </Button>
                       </form>
                   </Form>
+
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        Or login with
+                      </span>
+                    </div>
+                  </div>
+
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    className="w-full border-primary text-primary hover:bg-primary/5 h-11" 
+                    onClick={handleGoogleLogin} 
+                    disabled={loading}
+                  >
+                    <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+                      <path
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.18 1-.78 1.85-1.63 2.53v2.77h2.63c1.62-1.5 2.56-3.7 2.56-6.32z"
+                        fill="#4285F4"
+                      />
+                      <path
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-2.63-2.77c-.73.5-1.66.81-2.65.81-2.04 0-3.77-1.39-4.38-3.26H4.07v3.33C5.89 21.39 8.74 23 12 23z"
+                        fill="#34A853"
+                      />
+                      <path
+                        d="M7.62 15.11C7.46 14.63 7.38 14.12 7.38 13.6s.08-1.02.24-1.51V8.76H4.07C3.54 9.81 3.25 11.01 3.25 12.25s.29 2.44.82 3.49l3.53-2.63z"
+                        fill="#FBBC05"
+                      />
+                      <path
+                        d="M12 7.25c1.62 0 3.07.56 4.21 1.64l3.15-3.15C17.45 3.74 14.97 3 12 3 8.74 3 5.89 4.61 4.07 7.25l3.55 3.33c.61-1.87 2.34-3.26 4.38-3.26z"
+                        fill="#EA4335"
+                      />
+                    </svg>
+                    Sign in with Google
+                  </Button>
               </TabsContent>
               <TabsContent value="signup">
                    <h3 className="font-headline text-xl mt-4 mb-2 text-muted-foreground font-bold uppercase flex items-center justify-center gap-2">

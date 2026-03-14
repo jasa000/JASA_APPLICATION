@@ -138,6 +138,8 @@ export default function ManageAllOrdersPage() {
 
   const cleanupOrders = async (type: 'delivered' | 'cancelled', days: number) => {
     const ordersToDelete = orders.filter(order => {
+      // type 'delivered' includes all successful end-states
+      // type 'cancelled' includes all failed end-states (user cancelled or shop rejected)
       const isCorrectStatus = type === 'delivered' 
         ? (order.status === 'Delivered' || order.status === 'Return Completed' || order.status === 'Replacement Completed')
         : (order.status === 'Cancelled' || order.status === 'Rejected' || order.status === 'Return Rejected');
@@ -152,7 +154,7 @@ export default function ManageAllOrdersPage() {
     if (ordersToDelete.length === 0) {
       toast({
         title: "Nothing to Clean Up",
-        description: `No ${type} orders matching criteria found.`,
+        description: `No ${type === 'cancelled' ? 'cancelled/rejected' : 'delivered'} orders matching criteria found.`,
       });
       return;
     }
@@ -163,7 +165,7 @@ export default function ManageAllOrdersPage() {
       await deleteOrdersBulk(ids);
       toast({
         title: "Cleanup Successful",
-        description: `Removed ${ids.length} ${type} orders.`,
+        description: `Removed ${ids.length} ${type === 'cancelled' ? 'cancelled/rejected' : 'delivered'} orders.`,
       });
       fetchData();
     } catch (error: any) {
@@ -249,7 +251,7 @@ export default function ManageAllOrdersPage() {
         <Card className="border-red-200 bg-red-50/50">
           <CardHeader className="p-4">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <XCircle className="h-4 w-4 text-red-600" /> Cleanup Cancelled
+              <XCircle className="h-4 w-4 text-red-600" /> Cleanup Cancelled/Rejected
             </CardTitle>
           </CardHeader>
           <CardFooter className="p-4 pt-0 flex-wrap gap-2">
@@ -260,7 +262,7 @@ export default function ManageAllOrdersPage() {
               &gt; 7 Days
             </Button>
             <Button size="sm" variant="destructive" className="w-full mt-1" onClick={() => cleanupOrders('cancelled', 0)}>
-              All Cancelled
+              Clear All Failed Orders
             </Button>
           </CardFooter>
         </Card>

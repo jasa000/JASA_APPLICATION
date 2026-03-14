@@ -35,7 +35,6 @@ import Image from "next/image";
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { getShops } from "@/lib/shops";
-import PwaInstallButton from "./PwaInstallButton";
 
 export default function AppSidebar() {
   const { user, loading } = useAuth()
@@ -159,9 +158,6 @@ export default function AppSidebar() {
               <SidebarMenuButton tooltip="Theme" size="icon" onClick={toggleTheme}>
                   {theme === 'dark' ? <Sun /> : <Moon />}
               </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-              <PwaInstallButton />
           </SidebarMenuItem>
            {user ? (
               <>

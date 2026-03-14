@@ -111,7 +111,7 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
     return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
 };
 
-// --- Sub-components moved outside to prevent flickering ---
+// --- Sub-components moved outside to prevent remounting/flickering ---
 
 const PriceListDialog = memo(({ isLoading, error, services }: { isLoading: boolean, error: string | null, services: XeroxService[] }) => (
     <Dialog>
@@ -264,13 +264,6 @@ const UploadProgressDialog = ({
     const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
     const allFinished = Object.keys(uploadStatus).length > 0 && Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped' || s.status === 'error');
 
-    // ONLY redirect automatically if everything is a SUCCESS or SKIPPED (no errors)
-    useEffect(() => {
-        if (isUploading && allFinished && !isProcessing && !hasErrors && Object.keys(uploadStatus).length > 0) {
-            storeJobsAndRedirect();
-        }
-    }, [isUploading, allFinished, isProcessing, hasErrors, uploadStatus, storeJobsAndRedirect]);
-    
     return (
         <Dialog open={isUploading} onOpenChange={setIsUploading}>
             <DialogContent className="max-w-md w-full max-h-[90vh] flex flex-col" hideCloseButton>
@@ -319,7 +312,6 @@ const UploadProgressDialog = ({
                         </Button>
                       )}
                       
-                      {/* Show proceed button if there are errors but the user wants to continue anyway */}
                       {(hasErrors || allFinished) && !isProcessing && (
                           <Button variant="secondary" className="w-full" onClick={storeJobsAndRedirect}>
                               Proceed to Checkout {hasErrors ? "Anyway" : ""}

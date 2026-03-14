@@ -1,27 +1,40 @@
-
 'use server';
 
-import { v2 as cloudinary } from 'cloudinary';
-
-// Configure Cloudinary within the server action
-cloudinary.config({ 
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-  api_key: process.env.CLOUDINARY_API_KEY, 
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
-});
+import { supabaseAdmin } from "@/lib/supabase";
+import { v4 as uuidv4 } from 'uuid';
 
 export async function uploadImageAction(
   base64Image: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   try {
-    // For server-side actions, it's more robust to use a standard authenticated upload
-    // rather than relying on unsigned presets which can have configuration issues.
-    const result = await cloudinary.uploader.upload(base64Image, {
-      folder: "jasa_essentials" // Optional: organize uploads in a specific folder
-    });
+    // Extract format and base64 data
+    const matches = base64Image.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) {
+      throw new Error('Invalid base64 image format');
+    }
+
+    const extension = matches[1];
+    const buffer = Buffer.from(matches[2], 'base64');
+    const fileName = `${uuidv4()}.${extension}`;
+
+    // Upload to Supabase Storage 'jasa-essentials' bucket
+    const { data, error } = await supabaseAdmin.storage
+      .from('jasa-essentials')
+      .upload(fileName, buffer, {
+        contentType: `image/${extension}`,
+        upsert: false
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    // Get public URL
+    const { data: { publicUrl } } = supabaseAdmin.storage
+      .from('jasa-essentials')
+      .getPublicUrl(data.path);
     
-    return { success: true, url: result.secure_url };
+    return { success: true, url: publicUrl };
   } catch (error: any) {
     console.error('Upload action error:', error.message);
     return { success: false, error: error.message };

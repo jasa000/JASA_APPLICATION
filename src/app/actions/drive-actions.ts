@@ -1,16 +1,8 @@
 'use server';
 
-import { v2 as cloudinary } from 'cloudinary';
+import { supabaseAdmin } from "@/lib/supabase";
 import { getAllOrderImageUrls } from '@/lib/data';
 import { OrderStatus } from '@/lib/types';
-
-// Configure Cloudinary
-cloudinary.config({ 
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-  api_key: process.env.CLOUDINARY_API_KEY, 
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true
-});
 
 // Helper to format bytes
 const formatBytes = (bytes: number, decimals = 2) => {
@@ -24,16 +16,16 @@ const formatBytes = (bytes: number, decimals = 2) => {
 
 export async function getDriveUsageAction() {
   try {
-    const result = await cloudinary.api.usage();
-    // Some plans return storage in different levels, normalizing here
-    const storage = result.storage || { usage: 0, limit: 0 };
+    // Supabase doesn't have a direct "usage" API via storage-js, 
+    // returning a placeholder or potentially querying meta-tables if needed.
+    // For now, we'll return a simple object.
     return {
-      limit: storage.limit,
-      usage: storage.usage,
+      limit: 1024 * 1024 * 1024 * 5, // 5GB free tier estimate
+      usage: 0, 
     };
   } catch (error: any) {
-    console.error('Error fetching Cloudinary usage:', error);
-    throw new Error('Could not fetch Cloudinary usage data.');
+    console.error('Error fetching Supabase storage usage:', error);
+    return { limit: 0, usage: 0 };
   }
 }
 
@@ -62,25 +54,19 @@ const getOrderStatusCategory = (status: OrderStatus): 'Active' | 'Delivered' | '
 
 export async function getDriveFilesAction(): Promise<{ error?: string; files: any[] }> {
   try {
-    // Fetch resources from 'jasa_documents' folder for both raw and image types
-    // Admin API is used here which has better search/filter capabilities for management
-    const [rawResources, imageResources, allOrderImages] = await Promise.all([
-      cloudinary.api.resources({ 
-        type: 'upload', 
-        prefix: 'jasa_documents/', 
-        resource_type: 'raw',
-        max_results: 500 
-      }),
-      cloudinary.api.resources({ 
-        type: 'upload', 
-        prefix: 'jasa_documents/', 
-        resource_type: 'image',
-        max_results: 500 
-      }),
-      getAllOrderImageUrls()
-    ]);
+    const { data: supabaseFiles, error: storageError } = await supabaseAdmin.storage
+      .from('jasa-documents')
+      .list('', {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'created_at', order: 'desc' },
+      });
+
+    if (storageError) throw storageError;
+
+    const allOrderImages = await getAllOrderImageUrls();
     
-    // Create a map of URL to status for fast lookup
+    // Create a map of public URL to status for fast lookup
     const urlToOrderStatus = new Map<string, OrderStatus>();
     allOrderImages.forEach(order => {
         if (order.productImage) {
@@ -88,10 +74,13 @@ export async function getDriveFilesAction(): Promise<{ error?: string; files: an
         }
     });
 
-    const allResources = [...(rawResources.resources || []), ...(imageResources.resources || [])];
+    const files = supabaseFiles.map((file: any) => {
+        // Construct the public URL manually for lookup
+        const { data: { publicUrl } } = supabaseAdmin.storage
+            .from('jasa-documents')
+            .getPublicUrl(file.name);
 
-    const files = allResources.map((resource: any) => {
-        const orderStatus = urlToOrderStatus.get(resource.secure_url);
+        const orderStatus = urlToOrderStatus.get(publicUrl);
         let statusCategory: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused' = 'Unused';
         
         if(orderStatus) {
@@ -99,48 +88,47 @@ export async function getDriveFilesAction(): Promise<{ error?: string; files: an
         }
         
         return {
-          id: resource.public_id,
-          name: resource.filename || resource.public_id.split('/').pop() || 'Untitled',
-          size: resource.bytes ? formatBytes(Number(resource.bytes)) : 'N/A',
-          createdTime: resource.created_at || new Date().toISOString(),
-          webViewLink: resource.secure_url,
+          id: file.name,
+          name: file.name,
+          size: file.metadata?.size ? formatBytes(Number(file.metadata.size)) : 'N/A',
+          createdTime: file.created_at || new Date().toISOString(),
+          webViewLink: publicUrl,
           orderStatus: statusCategory,
-          resourceType: resource.resource_type // 'image' or 'raw'
+          resourceType: file.metadata?.mimetype?.startsWith('image/') ? 'image' : 'raw'
         }
     });
 
-    // Sort by most recent first
-    files.sort((a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
-
     return { files };
   } catch (error: any) {
-    console.error('Error fetching Cloudinary files:', error);
-    return { error: 'Could not fetch files from Cloudinary. Check environment variables.', files: [] };
+    console.error('Error fetching Supabase files:', error);
+    return { error: 'Could not fetch files from Supabase. Check environment variables.', files: [] };
   }
 }
 
-export async function deleteDriveFileAction(publicId: string, resourceType: string = 'raw') {
+export async function deleteDriveFileAction(fileName: string) {
   try {
-    await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+    const { error } = await supabaseAdmin.storage
+      .from('jasa-documents')
+      .remove([fileName]);
+    
+    if (error) throw error;
     return { success: true };
   } catch (error: any) {
-    console.error('Error deleting Cloudinary file:', error);
-    throw new Error('Could not delete file from Cloudinary.');
+    console.error('Error deleting Supabase file:', error);
+    throw new Error('Could not delete file from Supabase.');
   }
 }
 
-export async function deleteDriveFilesAction(fileIds: string[]) {
+export async function deleteDriveFilesAction(fileNames: string[]) {
     try {
-        // Individual deletion is safer for mixed resource types in a single action
-        await Promise.all(fileIds.map(async id => {
-            // We try both types if we don't track them explicitly in the selection
-            // In a more complex app, we'd pass the resourceType from the UI
-            await cloudinary.uploader.destroy(id, { resource_type: 'raw' });
-            await cloudinary.uploader.destroy(id, { resource_type: 'image' });
-        }));
+        const { error } = await supabaseAdmin.storage
+            .from('jasa-documents')
+            .remove(fileNames);
+        
+        if (error) throw error;
         return { success: true };
     } catch (error: any) {
-        console.error('Error deleting multiple Cloudinary files:', error);
+        console.error('Error deleting multiple Supabase files:', error);
         throw new Error('Could not delete all selected files.');
     }
 }

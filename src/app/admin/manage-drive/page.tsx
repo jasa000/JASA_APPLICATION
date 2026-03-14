@@ -38,7 +38,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ExternalLink, Cloud, AlertCircle, X, RefreshCw, FileText, Image as ImageIcon, Info } from "lucide-react";
+import { Trash2, ExternalLink, Database, AlertCircle, X, RefreshCw, FileText, Image as ImageIcon, Info } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +57,7 @@ type DocumentFile = {
   resourceType: string;
 };
 
-type CloudinaryUsage = {
+type StorageUsage = {
   limit: number;
   usage: number;
 };
@@ -68,7 +68,7 @@ export default function ManageDocumentsPage() {
   const { toast } = useToast();
 
   const [files, setFiles] = useState<DocumentFile[]>([]);
-  const [usage, setUsage] = useState<CloudinaryUsage | null>(null);
+  const [usage, setUsage] = useState<StorageUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingFile, setDeletingFile] = useState<DocumentFile | null>(null);
   
@@ -126,7 +126,7 @@ export default function ManageDocumentsPage() {
   const handleDelete = async () => {
     if (!deletingFile) return;
     try {
-      await deleteDriveFileAction(deletingFile.id, deletingFile.resourceType);
+      await deleteDriveFileAction(deletingFile.id);
       toast({
         title: "File Deleted",
         description: `"${deletingFile.name}" removed.`,
@@ -189,7 +189,7 @@ export default function ManageDocumentsPage() {
 
 
   const renderUsageCard = () => {
-    if (isLoading || !usage) {
+    if (isLoading || !usage || usage.limit === 0) {
       return (
         <Card>
           <CardHeader>
@@ -209,10 +209,10 @@ export default function ManageDocumentsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cloud className="text-blue-500" /> Document Storage
+            <Database className="text-blue-500" /> Supabase Storage
           </CardTitle>
           <CardDescription>
-            Current storage usage for Xerox documents and linked order files on Cloudinary.
+            Current storage usage for Xerox documents and linked order files.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -376,7 +376,7 @@ export default function ManageDocumentsPage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Cloudinary File Explorer</CardTitle>
+                <CardTitle>Supabase File Explorer</CardTitle>
                 <CardDescription>
                 Files are linked to Firestore orders to help you identify which ones are safe to delete.
                 </CardDescription>
@@ -442,7 +442,7 @@ export default function ManageDocumentsPage() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Permanently delete {selectedFiles.length} files?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove the selected documents from Cloudinary forever. This action cannot be undone.
+                      This will remove the selected documents from storage forever. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -465,7 +465,7 @@ export default function ManageDocumentsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{deletingFile?.name}" from Cloudinary. This action cannot be undone.
+              This will permanently delete "{deletingFile?.name}" from storage. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

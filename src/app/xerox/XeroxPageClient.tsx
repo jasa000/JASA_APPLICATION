@@ -86,6 +86,7 @@ type DocumentPriceDetails = {
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
     if (!rules || rules.length === 0) return { charge: 0, nextTierInfo: null };
 
+    // Sort rules by the 'from' value
     const sortedRules = [...rules].sort((a, b) => a.from - b.from);
 
     for (const rule of sortedRules) {
@@ -938,7 +939,7 @@ export default function XeroxPageClient() {
         if (type === 'formatType') return HARDCODED_XEROX_OPTIONS.formatTypes.find(o => o.id === id)?.name || '';
         if (type === 'printRatio') return HARDCODED_XEROX_OPTIONS.printRatios.find(o => o.id === id)?.name || '';
         if (type === 'bindingType') return allOptions.bindingTypes.find(o => o.id === id)?.name || '';
-        if (type === 'laminationType') return laminationTypes.find(o => o.id === id)?.name || '';
+        if (type === 'laminationType') return allOptions.laminationTypes.find(o => o.id === id)?.name || '';
         return '';
     };
 

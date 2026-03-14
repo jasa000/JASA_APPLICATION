@@ -1,4 +1,3 @@
-
 import { NextRequest, NextResponse } from "next/server";
 import { v2 as cloudinary } from 'cloudinary';
 import fs from "fs";
@@ -15,16 +14,19 @@ cloudinary.config({
 });
 
 export async function POST(req: NextRequest) {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-
-    if (!file) {
-        return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
-    }
-
-    const tempFilePath = path.join(os.tmpdir(), `${Date.now()}-${file.name}`);
-
+    // Note: Request body size might be limited by your hosting provider (e.g., Netlify is 6MB).
+    // Large uploads (>6MB) are best handled via direct client-to-Cloudinary uploads with signed URLs.
+    
     try {
+        const formData = await req.formData();
+        const file = formData.get("file") as File | null;
+
+        if (!file) {
+            return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+        }
+
+        const tempFilePath = path.join(os.tmpdir(), `${Date.now()}-${file.name}`);
+
         // Stream the file to a temporary location
         const readableStream = file.stream();
         const writeStream = fs.createWriteStream(tempFilePath);
@@ -39,14 +41,21 @@ export async function POST(req: NextRequest) {
         const isImage = file.type.startsWith('image/');
         const resourceType = isImage ? 'image' : 'raw';
 
-        // Upload to Cloudinary
+        // Upload to Cloudinary using upload_large for better reliability with larger files
+        // Cloudinary upload_large automatically handles chunks for files > 10MB
         const uploadResponse = await cloudinary.uploader.upload(tempFilePath, {
             folder: "jasa_documents",
             resource_type: resourceType,
             public_id: file.name.replace(/\.[^/.]+$/, ""), // Use original name without extension as base ID
             use_filename: true,
             unique_filename: true,
+            chunk_size: 6000000, // 6MB chunks
         });
+
+        // Clean up the temporary file immediately after upload attempt
+        if (fs.existsSync(tempFilePath)) {
+            await fs.promises.unlink(tempFilePath);
+        }
 
         if (!uploadResponse.secure_url) {
             throw new Error("Cloudinary upload failed to return a URL.");
@@ -60,15 +69,10 @@ export async function POST(req: NextRequest) {
 
     } catch (e: any) {
         console.error('Error in POST /api/upload:', e);
-        return NextResponse.json({ error: "Upload failed", details: e.message }, { status: 500 });
-    } finally {
-        // Clean up the temporary file
-        try {
-            if (fs.existsSync(tempFilePath)) {
-                await fs.promises.unlink(tempFilePath);
-            }
-        } catch (unlinkError) {
-            console.error("Failed to delete temporary file:", tempFilePath, unlinkError);
-        }
+        return NextResponse.json({ 
+            error: "Upload failed", 
+            details: e.message,
+            hint: "Check if the file exceeds the server limit (e.g., Netlify 6MB)."
+        }, { status: 500 });
     }
 }

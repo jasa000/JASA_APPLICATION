@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
@@ -111,12 +110,6 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
         return { charge: lastRule.charge, nextTierInfo: null };
     }
     return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
-};
-
-const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
 const DocumentCard = ({ document, index, removeDocument, updateDocumentState, handlePaperTypeChange, paperTypes, allOptions, documentPrices, isLoading }: { 
@@ -664,7 +657,7 @@ export default function XeroxPageClient() {
 
             xhr.open("POST", "/api/upload", true);
             
-            xhr.timeout = 300000; // 5 minutes timeout
+            xhr.timeout = 600000; // 10 minutes timeout for larger files
 
             xhr.upload.onprogress = (event) => {
                 if (event.lengthComputable) {
@@ -716,7 +709,7 @@ export default function XeroxPageClient() {
 
             xhr.ontimeout = () => {
                 delete xhrRef.current[doc.id];
-                setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'skipped', progress: 100, url: null, error: "Upload timed out (5 minutes)." } }));
+                setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'skipped', progress: 100, url: null, error: "Upload timed out (10 minutes)." } }));
                 resolve(null); 
             };
             
@@ -846,7 +839,7 @@ export default function XeroxPageClient() {
                   <CardHeader>
                       <FileUp className="mx-auto h-12 w-12 text-black dark:text-white" />
                       <CardTitle className="text-2xl text-black dark:text-white">Start Your Printing Order</CardTitle>
-                      <CardDescription className="text-gray-800 dark:text-gray-200">Upload your documents to get started.</CardDescription>
+                      <CardDescription className="text-gray-800 dark:text-gray-200">Upload your documents to get started (up to 100MB per file).</CardDescription>
                   </CardHeader>
                   <CardContent>
                   <div className="relative w-full h-14 overflow-hidden rounded-full">

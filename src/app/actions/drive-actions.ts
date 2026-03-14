@@ -1,4 +1,3 @@
-
 'use server';
 
 import { v2 as cloudinary } from 'cloudinary';
@@ -26,11 +25,11 @@ const formatBytes = (bytes: number, decimals = 2) => {
 export async function getDriveUsageAction() {
   try {
     const result = await cloudinary.api.usage();
+    // Some plans return storage in different levels, normalizing here
     const storage = result.storage || { usage: 0, limit: 0 };
     return {
       limit: storage.limit,
       usage: storage.usage,
-      usageInDrive: storage.usage, // Reusing usage for consistency with UI
     };
   } catch (error: any) {
     console.error('Error fetching Cloudinary usage:', error);
@@ -39,8 +38,22 @@ export async function getDriveUsageAction() {
 }
 
 const getOrderStatusCategory = (status: OrderStatus): 'Active' | 'Delivered' | 'Cancelled/Rejected' => {
-    const activeStatuses: OrderStatus[] = ["Pending Confirmation", "Processing", "Packed", "Shipped", "Out for Delivery", "Return Requested", "Return Approved", "Out for Pickup", "Picked Up", "Replacement Issued"];
-    const deliveredStatuses: OrderStatus[] = ["Delivered", "Return Completed"];
+    const activeStatuses: OrderStatus[] = [
+        "Pending Confirmation", 
+        "Processing", 
+        "Packed", 
+        "Shipped", 
+        "Out for Delivery", 
+        "Pending Delivery Confirmation",
+        "Return Requested", 
+        "Return Approved", 
+        "Out for Pickup", 
+        "Picked Up", 
+        "Pending Return Confirmation",
+        "Replacement Confirmed",
+        "Pending Replacement Confirmation"
+    ];
+    const deliveredStatuses: OrderStatus[] = ["Delivered", "Return Completed", "Replacement Completed"];
     
     if (activeStatuses.includes(status)) return 'Active';
     if (deliveredStatuses.includes(status)) return 'Delivered';
@@ -50,6 +63,7 @@ const getOrderStatusCategory = (status: OrderStatus): 'Active' | 'Delivered' | '
 export async function getDriveFilesAction(): Promise<{ error?: string; files: any[] }> {
   try {
     // Fetch resources from 'jasa_documents' folder for both raw and image types
+    // Admin API is used here which has better search/filter capabilities for management
     const [rawResources, imageResources, allOrderImages] = await Promise.all([
       cloudinary.api.resources({ 
         type: 'upload', 
@@ -66,6 +80,7 @@ export async function getDriveFilesAction(): Promise<{ error?: string; files: an
       getAllOrderImageUrls()
     ]);
     
+    // Create a map of URL to status for fast lookup
     const urlToOrderStatus = new Map<string, OrderStatus>();
     allOrderImages.forEach(order => {
         if (order.productImage) {
@@ -77,11 +92,10 @@ export async function getDriveFilesAction(): Promise<{ error?: string; files: an
 
     const files = allResources.map((resource: any) => {
         const orderStatus = urlToOrderStatus.get(resource.secure_url);
-        let statusCategory: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused' | null = null;
+        let statusCategory: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused' = 'Unused';
+        
         if(orderStatus) {
             statusCategory = getOrderStatusCategory(orderStatus);
-        } else {
-            statusCategory = 'Unused';
         }
         
         return {
@@ -91,14 +105,17 @@ export async function getDriveFilesAction(): Promise<{ error?: string; files: an
           createdTime: resource.created_at || new Date().toISOString(),
           webViewLink: resource.secure_url,
           orderStatus: statusCategory,
-          resourceType: resource.resource_type // image or raw
+          resourceType: resource.resource_type // 'image' or 'raw'
         }
     });
+
+    // Sort by most recent first
+    files.sort((a, b) => new Date(b.createdTime).getTime() - new Date(a.createdTime).getTime());
 
     return { files };
   } catch (error: any) {
     console.error('Error fetching Cloudinary files:', error);
-    return { error: 'Could not fetch files from Cloudinary. Check server logs and environment variables.', files: [] };
+    return { error: 'Could not fetch files from Cloudinary. Check environment variables.', files: [] };
   }
 }
 
@@ -114,17 +131,16 @@ export async function deleteDriveFileAction(publicId: string, resourceType: stri
 
 export async function deleteDriveFilesAction(fileIds: string[]) {
     try {
-        // Note: Cloudinary bulk delete is restricted by resource type. 
-        // For simplicity, we delete them individually here or you'd need separate lists.
-        const results = await Promise.all(fileIds.map(async id => {
-            // We try deleting as both raw and image if type isn't passed, or you can fetch types first
-            // This is safer for a mixed-content folder
+        // Individual deletion is safer for mixed resource types in a single action
+        await Promise.all(fileIds.map(async id => {
+            // We try both types if we don't track them explicitly in the selection
+            // In a more complex app, we'd pass the resourceType from the UI
             await cloudinary.uploader.destroy(id, { resource_type: 'raw' });
             await cloudinary.uploader.destroy(id, { resource_type: 'image' });
         }));
         return { success: true };
     } catch (error: any) {
         console.error('Error deleting multiple Cloudinary files:', error);
-        throw new Error('Could not delete all selected files from Cloudinary. ' + error.message);
+        throw new Error('Could not delete all selected files.');
     }
 }

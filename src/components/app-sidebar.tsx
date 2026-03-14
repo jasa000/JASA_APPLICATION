@@ -35,6 +35,7 @@ import Image from "next/image";
 import { Button } from "./ui/button"
 import { Badge } from "./ui/badge"
 import { getShops } from "@/lib/shops";
+import PwaInstallButton from "./PwaInstallButton";
 
 export default function AppSidebar() {
   const { user, loading } = useAuth()
@@ -159,6 +160,9 @@ export default function AppSidebar() {
                   {theme === 'dark' ? <Sun /> : <Moon />}
               </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+              <PwaInstallButton />
+          </SidebarMenuItem>
            {user ? (
               <>
                   <SidebarMenuItem>
@@ -220,7 +224,7 @@ export default function AppSidebar() {
             </div>
             <h2 className="font-headline text-xl font-bold text-sidebar-foreground">JASA ESSENTIAL</h2>
         </div>
-
+        
         {user && (
            <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
               <SidebarMenu>
@@ -244,7 +248,6 @@ export default function AppSidebar() {
         <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2">
             {renderUserActions()}
         </SidebarGroup>
-
          <SidebarGroup className="bg-gray-100 dark:bg-gray-900 rounded-lg">
             <SidebarMenu>
                 <SidebarMenuItem>
@@ -424,7 +427,7 @@ export default function AppSidebar() {
                       <SidebarMenuButton asChild onClick={handleMenuItemClick} isActive={pathname.startsWith('/manage-cloudinary')}>
                           <Link href="/manage-cloudinary">
                               <ImageIcon />
-                              <span>Cloudinary</span>
+                              <span>Cloudinary Images</span>
                           </Link>
                       </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -432,7 +435,7 @@ export default function AppSidebar() {
                       <SidebarMenuButton asChild onClick={handleMenuItemClick} isActive={pathname.startsWith('/admin/manage-drive')}>
                           <Link href="/admin/manage-drive">
                               <Database />
-                              <span>Manage Drive</span>
+                              <span>Manage Documents</span>
                           </Link>
                       </SidebarMenuButton>
                   </SidebarMenuItem>

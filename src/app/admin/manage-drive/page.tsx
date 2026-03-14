@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -35,16 +34,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ExternalLink, Cloud, AlertCircle, X, RefreshCw } from "lucide-react";
+import { Trash2, ExternalLink, Cloud, AlertCircle, X, RefreshCw, FileText, Image as ImageIcon } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { cn } from "@/lib/utils";
 
 type DocumentFile = {
   id: string;
@@ -52,7 +53,7 @@ type DocumentFile = {
   size: string;
   createdTime: string;
   webViewLink: string;
-  orderStatus: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused' | null;
+  orderStatus: 'Active' | 'Delivered' | 'Cancelled/Rejected' | 'Unused';
   resourceType: string;
 };
 
@@ -61,7 +62,7 @@ type CloudinaryUsage = {
   usage: number;
 };
 
-export default function ManageDrivePage() {
+export default function ManageDocumentsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -95,8 +96,7 @@ export default function ManageDrivePage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: `Failed to fetch Cloudinary data: ${error.message}`,
-        duration: 9000,
+        description: `Failed to fetch data: ${error.message}`,
       });
     } finally {
       setIsLoading(false);
@@ -129,9 +129,9 @@ export default function ManageDrivePage() {
       await deleteDriveFileAction(deletingFile.id, deletingFile.resourceType);
       toast({
         title: "File Deleted",
-        description: `"${deletingFile.name}" has been removed from Cloudinary.`,
+        description: `"${deletingFile.name}" removed.`,
       });
-      fetchData(); // Refresh data
+      fetchData();
       setDeletingFile(null);
     } catch (error: any) {
       toast({
@@ -148,10 +148,10 @@ export default function ManageDrivePage() {
     try {
       await deleteDriveFilesAction(selectedFiles);
       toast({
-        title: `${selectedFiles.length} File(s) Deleted`,
-        description: "The selected files have been removed from Cloudinary.",
+        title: "Files Deleted",
+        description: `${selectedFiles.length} file(s) have been removed.`,
       });
-      fetchData(); // Refresh data
+      fetchData();
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -209,10 +209,10 @@ export default function ManageDrivePage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Cloud className="text-blue-500" /> Cloudinary Storage
+            <Cloud className="text-blue-500" /> Document Storage
           </CardTitle>
           <CardDescription>
-            Current storage usage for Xerox documents and product images.
+            Current storage usage for Xerox documents and linked order files on Cloudinary.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -239,7 +239,7 @@ export default function ManageDrivePage() {
         case 'Cancelled/Rejected':
             return <Badge variant="destructive">Cancelled/Rejected</Badge>;
         case 'Unused':
-            return <Badge variant="outline">Unused</Badge>;
+            return <Badge variant="outline">Unused (No Link)</Badge>;
         default:
             return <Badge variant="outline">Unknown</Badge>;
     }
@@ -263,7 +263,7 @@ export default function ManageDrivePage() {
                         <TableHead>File Name</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Size</TableHead>
-                        <TableHead>Date Uploaded</TableHead>
+                        <TableHead>Uploaded</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -284,7 +284,7 @@ export default function ManageDrivePage() {
     if(fileList.length === 0) {
         return (
             <div className="text-center py-12 text-muted-foreground">
-                <p>No files found for this filter.</p>
+                <p>No documents found for this filter.</p>
             </div>
         )
     }
@@ -304,7 +304,7 @@ export default function ManageDrivePage() {
             <TableHead>File Name</TableHead>
             <TableHead>Order Status</TableHead>
             <TableHead>Size</TableHead>
-            <TableHead>Date Uploaded</TableHead>
+            <TableHead>Uploaded</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -326,10 +326,15 @@ export default function ManageDrivePage() {
                       />
                   </TableCell>
               )}
-              <TableCell className="font-medium truncate max-w-sm">{file.name}</TableCell>
+              <TableCell className="font-medium">
+                  <div className="flex items-center gap-2 max-w-sm">
+                      {file.resourceType === 'raw' ? <FileText className="h-4 w-4 text-blue-500" /> : <ImageIcon className="h-4 w-4 text-green-500" />}
+                      <span className="truncate">{file.name}</span>
+                  </div>
+              </TableCell>
               <TableCell>{renderStatusBadge(file.orderStatus)}</TableCell>
-              <TableCell>{file.size}</TableCell>
-              <TableCell>{new Date(file.createdTime).toLocaleString()}</TableCell>
+              <TableCell className="whitespace-nowrap">{file.size}</TableCell>
+              <TableCell className="whitespace-nowrap text-xs">{new Date(file.createdTime).toLocaleString()}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" size="icon" asChild title="View File">
@@ -362,7 +367,7 @@ export default function ManageDrivePage() {
             </Button>
         </div>
         <p className="mt-2 text-muted-foreground">
-          View storage usage and manage your uploaded Xerox documents on Cloudinary.
+          Monitor storage and clean up uploaded files once orders are completed.
         </p>
 
         <div className="my-8">
@@ -371,18 +376,22 @@ export default function ManageDrivePage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Uploaded Documents</CardTitle>
+                <CardTitle>Cloudinary File Explorer</CardTitle>
                 <CardDescription>
-                Filter files based on their linked order status to manage storage effectively.
+                Files are linked to Firestore orders to help you identify which ones are safe to delete.
                 </CardDescription>
             </CardHeader>
             <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab}>
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="active">Active Orders ({activeFiles.length})</TabsTrigger>
-                    <TabsTrigger value="archived">Unused/Archived</TabsTrigger>
+                    <TabsTrigger value="active">Required for Active Orders ({activeFiles.length})</TabsTrigger>
+                    <TabsTrigger value="archived">Cleanup / History</TabsTrigger>
                   </TabsList>
                   <TabsContent value="active" className="mt-4">
+                      <div className="mb-4 rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-primary flex items-center gap-2">
+                        <Info className="h-4 w-4"/>
+                        <p>These files are needed for orders currently in progress. Do not delete them.</p>
+                      </div>
                       {renderFilesTable(activeFiles)}
                   </TabsContent>
                   <TabsContent value="archived" className="mt-4">
@@ -391,7 +400,7 @@ export default function ManageDrivePage() {
                         <RadioGroup value={unusedFilter} onValueChange={(v) => setUnusedFilter(v as any)} className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="unused" id="r-unused" />
-                                <Label htmlFor="r-unused" className="text-sm sm:text-base">Unused</Label>
+                                <Label htmlFor="r-unused" className="text-sm sm:text-base">Unused (No Link)</Label>
                             </div>
                              <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="delivered" id="r-delivered" />
@@ -405,7 +414,7 @@ export default function ManageDrivePage() {
                     </div>
                     <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
                         <AlertCircle className="h-4 w-4"/>
-                        <p>Files in this tab are from completed, cancelled, or unused uploads. They are likely safe to delete.</p>
+                        <p>Files in this tab are from completed, cancelled, or orphaned uploads. They are safe to delete.</p>
                     </div>
                     {renderFilesTable(unusedArchivedFiles, true)}
                   </TabsContent>
@@ -415,7 +424,7 @@ export default function ManageDrivePage() {
       </div>
       
        {activeTab === 'archived' && selectedFiles.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t">
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t lg:left-[var(--sidebar-width)] transition-[left] duration-200">
           <div className="container mx-auto flex items-center justify-between">
             <p className="font-semibold">{selectedFiles.length} file(s) selected</p>
             <div className="flex gap-2">
@@ -431,14 +440,14 @@ export default function ManageDrivePage() {
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {selectedFiles.length} files?</AlertDialogTitle>
+                    <AlertDialogTitle>Permanently delete {selectedFiles.length} files?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will permanently delete the selected files from Cloudinary. This action cannot be undone.
+                      This will remove the selected documents from Cloudinary forever. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteSelected}>Delete</AlertDialogAction>
+                    <AlertDialogAction onClick={handleDeleteSelected}>Delete Permanently</AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -456,8 +465,7 @@ export default function ManageDrivePage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              file "{deletingFile?.name}" from Cloudinary.
+              This will permanently delete "{deletingFile?.name}" from Cloudinary. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -466,7 +474,7 @@ export default function ManageDrivePage() {
               onClick={handleDelete}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Delete
+              Delete File
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
 import { getXeroxServices, getXeroxOptions, getPaperSamples, getOrderSettings, createOrder, updateOrderWithDocumentUrl } from "@/lib/data";
 import type { XeroxService, XeroxOption, PaperSample, OrderSettings, XeroxDocument as StoredXeroxJob, StoredXeroxJob as _StoredXeroxJob, DeliveryChargeRule, Order } from "@/lib/types";
 import { HARDCODED_XEROX_OPTIONS } from "@/lib/xerox-options";
@@ -86,7 +86,6 @@ type DocumentPriceDetails = {
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
     if (!rules || rules.length === 0) return { charge: 0, nextTierInfo: null };
 
-    // Sort rules by the 'from' value
     const sortedRules = [...rules].sort((a, b) => a.from - b.from);
 
     for (const rule of sortedRules) {
@@ -110,6 +109,230 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
         return { charge: lastRule.charge, nextTierInfo: null };
     }
     return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
+};
+
+// --- Sub-components moved outside to prevent flickering ---
+
+const PriceListDialog = memo(({ isLoading, error, services }: { isLoading: boolean, error: string | null, services: XeroxService[] }) => (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95">
+          <ListOrdered className="mr-2 h-4 w-4" /> View Price List
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Xerox &amp; Printing Price List</DialogTitle>
+          <DialogDescription>
+            Prices for various printing and finishing services.
+          </DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="flex-grow pr-4">
+          {error ? (
+            <p className="text-center text-destructive">{error}</p>
+          ) : isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : services.length === 0 ? (
+            <p className="py-8 text-center text-muted-foreground">
+              No printing services are available at the moment.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Service</TableHead>
+                  <TableHead className="text-right">Price</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {services.map((service) => {
+                  const hasDiscount = service.discountPrice != null && service.discountPrice < service.price;
+                  return (
+                    <TableRow key={service.id}>
+                      <TableCell className="font-medium">
+                        <p>{service.name}</p>
+                        {service.unit && <p className="text-xs text-muted-foreground">{service.unit}</p>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {hasDiscount ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-base font-bold">Rs {service.discountPrice?.toFixed(2)}</span>
+                            <span className="text-xs text-muted-foreground line-through">Rs {service.price.toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <span className="text-base font-bold">Rs {service.price.toFixed(2)}</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </ScrollArea>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+));
+PriceListDialog.displayName = 'PriceListDialog';
+
+const PaperSamplesDialog = memo(({ isLoading, paperSamples }: { isLoading: boolean, paperSamples: PaperSample[] }) => (
+    <Dialog>
+        <DialogTrigger asChild>
+            <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95"><Images className="mr-2 h-4 w-4"/> View Formats</Button>
+        </DialogTrigger>
+        <DialogContent className="max-h-[80vh] flex flex-col">
+            <DialogHeader>
+                <DialogTitle>Paper Sample Formats</DialogTitle>
+                <DialogDescription>
+                    Visual examples of different paper types.
+                </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-grow">
+                <div className="pr-6 space-y-4">
+                    {isLoading ? (
+                        <p>Loading samples...</p>
+                    ) : paperSamples.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No samples available.</p>
+                    ) : (
+                        paperSamples.map(sample => (
+                            <Card key={sample.id}>
+                                <CardHeader>
+                                    <CardTitle>{sample.name}</CardTitle>
+                                    <CardDescription>{sample.description}</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <Carousel>
+                                        <CarouselContent>
+                                            {sample.imageUrls.map((url, i) => (
+                                                <CarouselItem key={i}>
+                                                    <div className="relative aspect-video">
+                                                        <Image src={url} alt={`${sample.name} ${i+1}`} fill className="object-contain rounded-md" />
+                                                    </div>
+                                                </CarouselItem>
+                                            ))}
+                                        </CarouselContent>
+                                        {sample.imageUrls.length > 1 && (
+                                            <>
+                                            <CarouselPrevious />
+                                            <CarouselNext />
+                                            </>
+                                        )}
+                                    </Carousel>
+                                </CardContent>
+                            </Card>
+                        ))
+                    )}
+                </div>
+            </ScrollArea>
+            <DialogFooter>
+                <DialogClose asChild>
+                    <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
+                </DialogClose>
+            </DialogFooter>
+        </DialogContent>
+    </Dialog>
+));
+PaperSamplesDialog.displayName = 'PaperSamplesDialog';
+
+const UploadProgressDialog = ({ 
+    isUploading, 
+    setIsUploading, 
+    documents, 
+    uploadStatus, 
+    handleRetry, 
+    handleSkipAllAndProceed, 
+    storeJobsAndRedirect 
+}: {
+    isUploading: boolean;
+    setIsUploading: (open: boolean) => void;
+    documents: DocumentState[];
+    uploadStatus: Record<number, UploadStatus>;
+    handleRetry: (id: number) => void;
+    handleSkipAllAndProceed: () => void;
+    storeJobsAndRedirect: () => void;
+}) => {
+    const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
+    const hasErrors = Object.values(uploadStatus).some(s => s.status === 'error');
+    const allFinished = Object.keys(uploadStatus).length > 0 && Object.values(uploadStatus).every(s => s.status === 'success' || s.status === 'skipped' || s.status === 'error');
+
+    // ONLY redirect automatically if everything is a SUCCESS or SKIPPED (no errors)
+    useEffect(() => {
+        if (isUploading && allFinished && !isProcessing && !hasErrors && Object.keys(uploadStatus).length > 0) {
+            storeJobsAndRedirect();
+        }
+    }, [isUploading, allFinished, isProcessing, hasErrors, uploadStatus, storeJobsAndRedirect]);
+    
+    return (
+        <Dialog open={isUploading} onOpenChange={setIsUploading}>
+            <DialogContent className="max-w-md w-full max-h-[90vh] flex flex-col" hideCloseButton>
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <RefreshCw className={cn("h-5 w-5", isProcessing && "animate-spin")} />
+                        Processing Documents
+                    </DialogTitle>
+                    <DialogDescription>
+                        Your files are being uploaded to our secure servers.
+                    </DialogDescription>
+                </DialogHeader>
+
+                <ScrollArea className="flex-grow pr-4 py-4 border-y">
+                    <div className="space-y-4">
+                        {documents.map(doc => {
+                            const status = uploadStatus[doc.id];
+                            if (!status) return null;
+                            return (
+                                <div key={doc.id} className="space-y-2">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <p className="font-medium truncate max-w-[200px]">{doc.fileDetails?.name}</p>
+                                        <span className="text-xs text-muted-foreground">{status.progress}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Progress value={status.progress} className="flex-1 h-2" />
+                                        {status.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                                        {status.status === 'error' && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
+                                        {status.status === 'skipped' && <Info className="h-4 w-4 text-yellow-500 flex-shrink-0" />}
+                                        {status.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                                    </div>
+                                    {status.status === 'error' && <p className="text-[10px] text-red-500 mt-1">{status.error}</p>}
+                                    {status.status === 'skipped' && <p className="text-[10px] text-yellow-500 mt-1">{status.error || 'Upload skipped.'}</p>}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </ScrollArea>
+                
+                <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2 pt-4">
+                      {hasErrors && (
+                        <Button variant="default" className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => documents.forEach(doc => {
+                            if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
+                        })}>
+                            <RefreshCw className="mr-2 h-4 w-4"/> Retry Failed Uploads
+                        </Button>
+                      )}
+                      
+                      {/* Show proceed button if there are errors but the user wants to continue anyway */}
+                      {(hasErrors || allFinished) && !isProcessing && (
+                          <Button variant="secondary" className="w-full" onClick={storeJobsAndRedirect}>
+                              Proceed to Checkout {hasErrors ? "Anyway" : ""}
+                          </Button>
+                      )}
+
+                      <Button variant="ghost" className="w-full text-muted-foreground" onClick={handleSkipAllAndProceed} disabled={!isProcessing}>
+                          Skip All & Cancel Current
+                      </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
 };
 
 const DocumentCard = ({ document, index, removeDocument, updateDocumentState, handlePaperTypeChange, paperTypes, allOptions, documentPrices, isLoading }: { 
@@ -176,7 +399,7 @@ const DocumentCard = ({ document, index, removeDocument, updateDocumentState, ha
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will remove the document "{document.fileDetails?.name}" from your list. This action cannot be undone.
+                            This will remove the document "{document.fileDetails?.name}" from your list.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -274,87 +497,6 @@ const DocumentCard = ({ document, index, removeDocument, updateDocumentState, ha
                 </CardContent>
             </div>
         </Card>
-    );
-};
-
-const UploadProgressDialog = ({ 
-    isUploading, 
-    setIsUploading, 
-    documents, 
-    uploadStatus, 
-    handleRetry, 
-    handleSkipAllAndProceed, 
-    storeJobsAndRedirect 
-}: {
-    isUploading: boolean;
-    setIsUploading: (open: boolean) => void;
-    documents: DocumentState[];
-    uploadStatus: Record<number, UploadStatus>;
-    handleRetry: (id: number) => void;
-    handleSkipAllAndProceed: () => void;
-    storeJobsAndRedirect: () => void;
-}) => {
-    const isProcessing = Object.values(uploadStatus).some(s => s.status === 'pending' || s.status === 'uploading');
-
-    useEffect(() => {
-        if (isUploading && !isProcessing && Object.keys(uploadStatus).length > 0) {
-            storeJobsAndRedirect();
-        }
-    }, [isUploading, isProcessing, uploadStatus, storeJobsAndRedirect]);
-    
-    return (
-        <Dialog open={isUploading} onOpenChange={setIsUploading}>
-            <DialogContent className="max-w-md w-full max-h-[90vh] flex flex-col" hideCloseButton>
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <RefreshCw className={cn("h-5 w-5", isProcessing && "animate-spin")} />
-                        Processing Documents
-                    </DialogTitle>
-                    <DialogDescription>
-                        Your files are being uploaded. You can skip this and upload any remaining files later from your Order Details page.
-                    </DialogDescription>
-                </DialogHeader>
-
-                <ScrollArea className="flex-grow pr-4 py-4 border-y">
-                    <div className="space-y-4">
-                        {documents.map(doc => {
-                            const status = uploadStatus[doc.id];
-                            if (!status) return null;
-                            return (
-                                <div key={doc.id} className="space-y-2">
-                                    <div className="flex justify-between items-center text-sm">
-                                        <p className="font-medium truncate max-w-[200px]">{doc.fileDetails?.name}</p>
-                                        <span className="text-xs text-muted-foreground">{status.progress}%</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Progress value={status.progress} className="flex-1 h-2" />
-                                        {status.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />}
-                                        {status.status === 'error' && <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />}
-                                        {status.status === 'skipped' && <Info className="h-4 w-4 text-yellow-500 flex-shrink-0" />}
-                                        {status.status === 'uploading' && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                                    </div>
-                                    {status.status === 'error' && <p className="text-[10px] text-red-500 mt-1">{status.error}</p>}
-                                    {status.status === 'skipped' && <p className="text-[10px] text-yellow-500 mt-1">{status.error || 'Upload skipped.'}</p>}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </ScrollArea>
-                
-                <DialogFooter className="flex-col sm:flex-col sm:space-x-0 gap-2 pt-4">
-                      {Object.values(uploadStatus).some(s => s.status === 'error') && (
-                        <Button variant="outline" className="w-full" onClick={() => documents.forEach(doc => {
-                            if (uploadStatus[doc.id]?.status === 'error') handleRetry(doc.id);
-                        })}>
-                            <RefreshCw className="mr-2 h-4 w-4"/> Retry Failed Uploads
-                        </Button>
-                      )}
-                      <Button variant="outline" className="w-full" onClick={handleSkipAllAndProceed}>
-                          Skip All & Proceed
-                      </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
     );
 };
 
@@ -638,10 +780,11 @@ export default function XeroxPageClient() {
   const finalTotalPrice = useMemo(() => subtotal + deliveryInfo.charge, [subtotal, deliveryInfo.charge]);
 
     const uploadSingleDocument = useCallback(async (doc: DocumentState): Promise<string | null> => {
+        // Updated limit to 100MB as per requirement
         if (doc.file.size > 100 * 1024 * 1024) { 
              setUploadStatus(prev => ({
                 ...prev,
-                [doc.id]: { status: 'skipped', progress: 100, url: null, error: "File exceeds 100MB limit. Please upload from the Order Details page." }
+                [doc.id]: { status: 'skipped', progress: 100, url: null, error: "File exceeds 100MB limit." }
             }));
             return null;
         }
@@ -702,7 +845,7 @@ export default function XeroxPageClient() {
 
             xhr.onerror = () => {
                 delete xhrRef.current[doc.id];
-                const errorMessage = "Network error or request aborted.";
+                const errorMessage = "Network error. Document might be too large for server limits.";
                 setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: errorMessage } }));
                 resolve(null);
             };
@@ -839,7 +982,7 @@ export default function XeroxPageClient() {
                   <CardHeader>
                       <FileUp className="mx-auto h-12 w-12 text-black dark:text-white" />
                       <CardTitle className="text-2xl text-black dark:text-white">Start Your Printing Order</CardTitle>
-                      <CardDescription className="text-gray-800 dark:text-gray-200">Upload your documents to get started (up to 100MB per file).</CardDescription>
+                      <CardDescription className="text-gray-800 dark:text-gray-200">Upload your documents to get started.</CardDescription>
                   </CardHeader>
                   <CardContent>
                   <div className="relative w-full h-14 overflow-hidden rounded-full">
@@ -988,136 +1131,4 @@ export default function XeroxPageClient() {
         )}
     </div>
   );
-}
-
-function PriceListDialog({ isLoading, error, services }: { isLoading: boolean, error: string | null, services: XeroxService[] }) {
-    return (
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95">
-              <ListOrdered className="mr-2 h-4 w-4" /> View Price List
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[80vh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle>Xerox &amp; Printing Price List</DialogTitle>
-              <DialogDescription>
-                Prices for various printing and finishing services.
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="flex-grow pr-4">
-              {error ? (
-                <p className="text-center text-destructive">{error}</p>
-              ) : isLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                  <Skeleton className="h-8 w-full" />
-                </div>
-              ) : services.length === 0 ? (
-                <p className="py-8 text-center text-muted-foreground">
-                  No printing services are available at the moment.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Service</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {services.map((service) => {
-                      const hasDiscount = service.discountPrice != null && service.discountPrice < service.price;
-                      return (
-                        <TableRow key={service.id}>
-                          <TableCell className="font-medium">
-                            <p>{service.name}</p>
-                            {service.unit && <p className="text-xs text-muted-foreground">{service.unit}</p>}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {hasDiscount ? (
-                              <div className="flex flex-col items-end">
-                                <span className="text-base font-bold">Rs {service.discountPrice?.toFixed(2)}</span>
-                                <span className="text-xs text-muted-foreground line-through">Rs {service.price.toFixed(2)}</span>
-                              </div>
-                            ) : (
-                              <span className="text-base font-bold">Rs {service.price.toFixed(2)}</span>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </ScrollArea>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
-              </DialogClose>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-    );
-}
-
-function PaperSamplesDialog({ isLoading, paperSamples }: { isLoading: boolean, paperSamples: PaperSample[] }) {
-    return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-500 to-sky-400 text-white hover:opacity-90 transition-transform active:scale-95"><Images className="mr-2 h-4 w-4"/> View Formats</Button>
-            </DialogTrigger>
-            <DialogContent className="max-h-[80vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Paper Sample Formats</DialogTitle>
-                    <DialogDescription>
-                        Visual examples of different paper types.
-                    </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="flex-grow">
-                    <div className="pr-6 space-y-4">
-                        {isLoading ? (
-                            <p>Loading samples...</p>
-                        ) : paperSamples.length === 0 ? (
-                            <p className="text-center text-muted-foreground py-8">No samples available.</p>
-                        ) : (
-                            paperSamples.map(sample => (
-                                <Card key={sample.id}>
-                                    <CardHeader>
-                                        <CardTitle>{sample.name}</CardTitle>
-                                        <CardDescription>{sample.description}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <Carousel>
-                                            <CarouselContent>
-                                                {sample.imageUrls.map((url, i) => (
-                                                    <CarouselItem key={i}>
-                                                        <div className="relative aspect-video">
-                                                            <Image src={url} alt={`${sample.name} ${i+1}`} fill className="object-contain rounded-md" />
-                                                        </div>
-                                                    </CarouselItem>
-                                                ))}
-                                            </CarouselContent>
-                                            {sample.imageUrls.length > 1 && (
-                                                <>
-                                                <CarouselPrevious />
-                                                <CarouselNext />
-                                                </>
-                                            )}
-                                        </Carousel>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        )}
-                    </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <DialogClose asChild>
-                        <Button variant="destructive" className="transition-transform active:scale-95">Close</Button>
-                    </DialogClose>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
 }

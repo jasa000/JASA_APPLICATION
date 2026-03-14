@@ -356,7 +356,7 @@ export default function ManageDocumentsPage() {
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-8 pb-40">
         <div className="flex items-center justify-between">
             <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
             Manage Documents
@@ -424,7 +424,7 @@ export default function ManageDocumentsPage() {
       </div>
       
        {activeTab === 'archived' && selectedFiles.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t lg:left-[var(--sidebar-width)] transition-[left] duration-200">
+        <div className="fixed bottom-16 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t lg:left-[var(--sidebar-width)] transition-[left] duration-200">
           <div className="container mx-auto flex items-center justify-between">
             <p className="font-semibold">{selectedFiles.length} file(s) selected</p>
             <div className="flex gap-2">

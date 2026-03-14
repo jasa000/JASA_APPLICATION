@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -369,7 +368,7 @@ export default function ManageCloudinaryPage() {
 
   return (
     <>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 pt-8 pb-40">
         <h1 className="font-headline text-3xl font-bold tracking-tight lg:text-4xl">
           Cloudinary Management
         </h1>
@@ -420,7 +419,7 @@ export default function ManageCloudinaryPage() {
       </div>
 
       {activeTab === 'unused' && selectedImages.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t">
+        <div className="fixed bottom-16 left-0 right-0 z-50 bg-background/90 p-4 backdrop-blur-sm border-t lg:left-[var(--sidebar-width)] transition-[left] duration-200">
           <div className="container mx-auto flex items-center justify-between">
             <p className="font-semibold">{selectedImages.length} image(s) selected</p>
             <div className="flex gap-2">

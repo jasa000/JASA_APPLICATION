@@ -9,19 +9,15 @@ This is a modern, full-stack e-commerce and management application built on the 
 - **Framework**: Next.js 15 (React 18/19)
 - **Styling**: Tailwind CSS with ShadCN UI
 - **Backend**: Firebase (Firestore, Authentication)
-- **Services**: Cloudinary (Product Images), Google Drive (User Documents)
+- **Storage**: Supabase Storage (Xerox Documents & Product Images)
 
 ---
 
-## Deployment to Netlify
+## Environment Variables
 
-For the application to function correctly in production, you must configure your environment variables.
+For the application to function correctly, you must configure your environment variables.
 
-### Part 1: Environment Variables
-
-Add the following variables to your Netlify site configuration (**Site settings > Build & deploy > Environment > Environment variables**).
-
-**1. Firebase (Public):**
+### Part 1: Firebase (Public)
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
@@ -29,25 +25,21 @@ Add the following variables to your Netlify site configuration (**Site settings 
 - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 
-**2. Cloudinary (Server-side):**
-- `CLOUDINARY_CLOUD_NAME`
-- `CLOUDINARY_API_KEY`
-- `CLOUDINARY_API_SECRET`
+### Part 2: Supabase Storage (Public & Server-side)
+- `NEXT_PUBLIC_SUPABASE_URL`: Found in Supabase Settings > API > Project URL.
+- `SUPABASE_SERVICE_ROLE_KEY`: Found in Supabase Settings > API > service_role secret. **Keep this secret!**
 
-**3. Google Drive API (Server-side):**
-- `GOOGLE_CLIENT_ID`
-- `GOOGLE_CLIENT_SECRET`
-- `GOOGLE_REFRESH_TOKEN`
-- `GOOGLE_REDIRECT_URI`: Should match the one configured in Google Cloud Console.
-- `GOOGLE_FOLDER_ID`: (Optional but Recommended) Create a folder in Google Drive and paste its ID here to keep uploads organized.
+---
 
-### Part 2: Google Cloud Authorization
+## Supabase Setup Instructions
 
-1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Navigate to **APIs & Services > Credentials**.
-3. Under **OAuth 2.0 Client IDs**, edit your client ID.
-4. Add your Netlify URL (e.g., `https://your-site.netlify.app`) to **Authorized JavaScript origins**.
-5. Ensure the **Authorized redirect URIs** includes `https://developers.google.com/oauthplayground` (if you used it to get the refresh token) and your site URL.
+1. Go to the [Supabase Dashboard](https://app.supabase.com/).
+2. Create a new project.
+3. Click on **Storage** in the sidebar.
+4. Create two **Public** buckets:
+   - `jasa-documents`: For Xerox PDF uploads.
+   - `jasa-essentials`: For product and banner images.
+5. Add the URL and Service Role key to your environment variables.
 
 ---
 
@@ -56,7 +48,7 @@ Add the following variables to your Netlify site configuration (**Site settings 
 - `src/app`: Next.js App Router pages and API routes.
 - `src/components`: Reusable UI components (ShadCN).
 - `src/context`: React Context providers for Auth, Cart, Notifications, and Theme.
-- `src/lib`: Core logic, database functions, and external service clients.
+- `src/lib`: Core logic, database functions, and Supabase client.
 - `firestore.rules`: Security rules for the database.
 
 ## Git Repository

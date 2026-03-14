@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -41,7 +40,7 @@ service cloud.firestore {
       // Sellers can update orders for their shop
       allow update: if isSellerForShop(resource.data.sellerId);
       
-      // Admins have full access
+      // Admins have full access including deletion
       allow update, delete: if isAdmin();
     }
     

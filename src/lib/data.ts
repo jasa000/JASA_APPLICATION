@@ -1,5 +1,3 @@
-
-
 import type { Product, Category, Brand, Author, ProductType, HomepageContent, XeroxService, XeroxOption, XeroxOptionType, OrderSettings, Order, OrderStatus, Notification, PaperSample, ContactInfo, Query as SiteQuery } from './types';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, doc, getDoc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp, setDoc, writeBatch, runTransaction } from 'firebase/firestore';
@@ -990,4 +988,29 @@ export const approveReplacement = async (orderId: string): Promise<void> => {
 
 export const rejectOrderReturn = async (orderId: string, reason: string): Promise<void> => {
     await updateOrderStatus(orderId, "Return Rejected", reason);
+};
+
+// --- Admin Order Maintenance ---
+export const deleteOrder = async (orderId: string): Promise<void> => {
+    try {
+        const orderDoc = doc(db, 'orders', orderId);
+        await deleteDoc(orderDoc);
+    } catch (error) {
+        console.error("Error deleting order:", error);
+        throw new Error("Failed to delete order.");
+    }
+};
+
+export const deleteOrdersBulk = async (orderIds: string[]): Promise<void> => {
+    const batch = writeBatch(db);
+    orderIds.forEach(id => {
+        const orderDoc = doc(db, 'orders', id);
+        batch.delete(orderDoc);
+    });
+    try {
+        await batch.commit();
+    } catch (error) {
+        console.error("Error bulk deleting orders:", error);
+        throw new Error("Failed to delete selected orders.");
+    }
 };

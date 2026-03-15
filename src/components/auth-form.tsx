@@ -150,6 +150,43 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
     }
   }
 
+  async function handleGoogleLogin() {
+    setLoading(true);
+    const provider = new GoogleAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        await signOut(auth);
+        toast({
+          variant: "destructive",
+          title: "Account Not Found",
+          description: "You don't have an account with this Google email. Please register using the 'Sign Up' tab first.",
+        });
+      } else {
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${user.displayName || 'User'}!`,
+        });
+        onSuccess?.();
+      }
+    } catch (error: any) {
+       if (error.code !== 'auth/popup-closed-by-user') {
+         toast({
+          variant: "destructive",
+          title: "Sign-In Failed",
+          description: error.message,
+        });
+       }
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function onSignupSubmit(values: z.infer<typeof signupSchema>) {
     setLoading(true);
     try {
@@ -180,45 +217,6 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
         title: "Sign Up Failed",
         description: error.message,
       });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleGoogleLogin() {
-    setLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      
-      // Check if user exists in Firestore
-      const userDocRef = doc(db, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        // Not an existing user, sign out and show error
-        await signOut(auth);
-        toast({
-          variant: "destructive",
-          title: "Account Not Found",
-          description: "You don't have an account with this Google email. Please register using the 'Sign Up' tab first.",
-        });
-      } else {
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${user.displayName || 'User'}!`,
-        });
-        onSuccess?.();
-      }
-    } catch (error: any) {
-       if (error.code !== 'auth/popup-closed-by-user') {
-         toast({
-          variant: "destructive",
-          title: "Sign-In Failed",
-          description: error.message,
-        });
-       }
     } finally {
       setLoading(false);
     }
@@ -296,7 +294,6 @@ export default function AuthForm({ defaultTab = 'login', onSuccess }: AuthFormPr
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Forgot Password Dialog */}
       <Dialog open={isForgotPwdOpen} onOpenChange={setIsForgotPwdOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

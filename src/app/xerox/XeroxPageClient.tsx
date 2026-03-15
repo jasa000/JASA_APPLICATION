@@ -1,12 +1,13 @@
+
 "use client";
 
 import { useEffect, useState, useRef, useCallback, useMemo, memo } from "react";
-import { getXeroxServices, getXeroxOptions, getPaperSamples, getOrderSettings, createOrder, updateOrderWithDocumentUrl } from "@/lib/data";
-import type { XeroxService, XeroxOption, PaperSample, OrderSettings, XeroxDocument as StoredXeroxJob, StoredXeroxJob as _StoredXeroxJob, DeliveryChargeRule, Order } from "@/lib/types";
+import { getXeroxServices, getXeroxOptions, getPaperSamples, getOrderSettings } from "@/lib/data";
+import type { XeroxService, XeroxOption, PaperSample, OrderSettings, StoredXeroxJob as _StoredXeroxJob, DeliveryChargeRule } from "@/lib/types";
 import { HARDCODED_XEROX_OPTIONS } from "@/lib/xerox-options";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Loader2, FileUp, XCircle, FileText, ShoppingCart, Plus, Minus, Pencil, ListOrdered, Images, Link as LinkIcon, CheckCircle, RefreshCw, Trash2, Info } from "lucide-react";
+import { Loader2, FileUp, XCircle, FileText, Plus, Minus, ListOrdered, Images, Link as LinkIcon, CheckCircle, RefreshCw, Trash2, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ import {
   TableHead
 } from "@/components/ui/table";
 import { useAuth } from "@/context/auth-provider";
+import { supabase } from "@/lib/supabase";
 
 
 type DocumentState = {
@@ -86,7 +88,6 @@ type DocumentPriceDetails = {
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
     if (!rules || rules.length === 0) return { charge: 0, nextTierInfo: null };
 
-    // Sort rules by the 'from' value
     const sortedRules = [...rules].sort((a, b) => a.from - b.from);
 
     for (const rule of sortedRules) {
@@ -111,8 +112,6 @@ const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { cha
     }
     return { charge: 0, nextTierInfo: "No applicable delivery rule found." };
 };
-
-// --- Sub-components moved outside to prevent remounting/flickering ---
 
 const PriceListDialog = memo(({ isLoading, error, services }: { isLoading: boolean, error: string | null, services: XeroxService[] }) => (
     <Dialog>
@@ -520,7 +519,7 @@ export default function XeroxPageClient() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Record<number, UploadStatus>>({});
   
-  const xhrRef = useRef<Record<number, XMLHttpRequest>>({});
+  const abortControllers = useRef<Record<number, AbortController>>({});
 
 
   useEffect(() => {
@@ -773,7 +772,6 @@ export default function XeroxPageClient() {
   const finalTotalPrice = useMemo(() => subtotal + deliveryInfo.charge, [subtotal, deliveryInfo.charge]);
 
     const uploadSingleDocument = useCallback(async (doc: DocumentState): Promise<string | null> => {
-        // Updated limit to 100MB as per requirement
         if (doc.file.size > 100 * 1024 * 1024) { 
              setUploadStatus(prev => ({
                 ...prev,
@@ -787,72 +785,30 @@ export default function XeroxPageClient() {
             [doc.id]: { status: 'uploading', progress: 0 }
         }));
 
-        return new Promise<string | null>((resolve) => {
-            const xhr = new XMLHttpRequest();
-            xhrRef.current[doc.id] = xhr;
+        const fileName = `${Date.now()}-${doc.file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase()}`;
+        
+        try {
+            const { data, error } = await supabase.storage
+                .from('jasa-documents')
+                .upload(fileName, doc.file, {
+                    cacheControl: '3600',
+                    upsert: false
+                });
 
-            xhr.open("POST", "/api/upload", true);
-            
-            xhr.timeout = 600000; // 10 minutes timeout for larger files
+            if (error) throw error;
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    const percentComplete = Math.round((event.loaded / event.total) * 100);
-                    setUploadStatus(prev => {
-                        if (prev[doc.id]) {
-                            return { ...prev, [doc.id]: { ...prev[doc.id], progress: percentComplete, status: 'uploading' }};
-                        }
-                        return prev;
-                    });
-                }
-            };
+            const { data: { publicUrl } } = supabase.storage
+                .from('jasa-documents')
+                .getPublicUrl(data.path);
 
-            xhr.onload = () => {
-                delete xhrRef.current[doc.id];
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const response = JSON.parse(xhr.responseText);
-                        setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'success', progress: 100, url: response.url } }));
-                        resolve(response.url);
-                    } catch (e) {
-                         setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: 'Invalid server response.' } }));
-                         resolve(null);
-                    }
-                } else {
-                     try {
-                        const errorResponse = JSON.parse(xhr.responseText);
-                        const errorMessage = errorResponse.error || 'Upload failed.';
-                        setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: errorMessage } }));
-                     } catch(e) {
-                        setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: 'An unknown server error occurred.' } }));
-                     }
-                    resolve(null);
-                }
-            };
-            
-            xhr.onabort = () => {
-                delete xhrRef.current[doc.id];
-                setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'skipped', progress: 0, error: 'Upload cancelled.' } }));
-                resolve(null);
-            };
+            setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'success', progress: 100, url: publicUrl } }));
+            return publicUrl;
 
-            xhr.onerror = () => {
-                delete xhrRef.current[doc.id];
-                const errorMessage = "Network error. Document might be too large for server limits.";
-                setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: errorMessage } }));
-                resolve(null);
-            };
-
-            xhr.ontimeout = () => {
-                delete xhrRef.current[doc.id];
-                setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'skipped', progress: 100, url: null, error: "Upload timed out (10 minutes)." } }));
-                resolve(null); 
-            };
-            
-            const fd = new FormData();
-            fd.append("file", doc.file);
-            xhr.send(fd);
-        });
+        } catch (error: any) {
+            console.error("Direct upload failed:", error);
+            setUploadStatus(prev => ({ ...prev, [doc.id]: { status: 'error', progress: 0, error: error.message || 'Upload failed.' } }));
+            return null;
+        }
     }, []);
     
     const storeJobsAndRedirect = useCallback(() => {
@@ -888,9 +844,6 @@ export default function XeroxPageClient() {
     }, [documents, documentPrices, uploadStatus, router]);
 
     const handleSkipAllAndProceed = useCallback(() => {
-        Object.values(xhrRef.current).forEach(xhr => xhr.abort());
-        xhrRef.current = {};
-
         setUploadStatus(prev => {
             const newStatus = { ...prev };
             documents.forEach(doc => {
@@ -910,12 +863,8 @@ export default function XeroxPageClient() {
         });
         setUploadStatus(initialStatuses);
         
-        try {
-            const uploadPromises = documents.map(doc => uploadSingleDocument(doc));
-            await Promise.allSettled(uploadPromises);
-        } catch (error) {
-            console.error("An error occurred during the upload batch.", error);
-        }
+        const uploadPromises = documents.map(doc => uploadSingleDocument(doc));
+        await Promise.allSettled(uploadPromises);
     }, [documents, uploadSingleDocument]);
     
     const handleCheckout = () => {
@@ -926,9 +875,7 @@ export default function XeroxPageClient() {
     const handleRetry = (docId: number) => {
         const docToRetry = documents.find(d => d.id === docId);
         if (docToRetry) {
-            uploadSingleDocument(docToRetry).catch(err => {
-                console.error("Retry failed", err);
-            });
+            uploadSingleDocument(docToRetry);
         }
     };
     

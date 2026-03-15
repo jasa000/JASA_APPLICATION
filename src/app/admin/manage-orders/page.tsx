@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -138,8 +139,6 @@ export default function ManageAllOrdersPage() {
 
   const cleanupOrders = async (type: 'delivered' | 'cancelled', days: number) => {
     const ordersToDelete = orders.filter(order => {
-      // type 'delivered' includes all successful end-states
-      // type 'cancelled' includes all failed end-states (user cancelled or shop rejected)
       const isCorrectStatus = type === 'delivered' 
         ? (order.status === 'Delivered' || order.status === 'Return Completed' || order.status === 'Replacement Completed')
         : (order.status === 'Cancelled' || order.status === 'Rejected' || order.status === 'Return Rejected');
@@ -352,7 +351,6 @@ export default function ManageAllOrdersPage() {
                   </TableRow>
                 ) : (
                   filteredOrders.map((order) => {
-                    const shop = shops.find(s => s.id === order.sellerId);
                     const customer = users.find(u => u.uid === order.userId);
                     return (
                       <TableRow key={order.id} className={cn(selectedOrderIds.includes(order.id) && "bg-muted/50")}>

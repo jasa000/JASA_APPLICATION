@@ -88,6 +88,7 @@ type DocumentPriceDetails = {
 const getDeliveryCharge = (rules: DeliveryChargeRule[], subtotal: number): { charge: number; nextTierInfo: string | null } => {
     if (!rules || rules.length === 0) return { charge: 0, nextTierInfo: null };
 
+    // Sort rules by the 'from' value
     const sortedRules = [...rules].sort((a, b) => a.from - b.from);
 
     for (const rule of sortedRules) {
